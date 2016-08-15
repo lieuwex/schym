@@ -27,7 +27,7 @@ static void getpos(const int index, const char *code, int *col, int *line) {
 	*line = -1;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
 	/*
 	ParseResult cmt = parse("; kaas\ntest");
 	printf("%s\n", cmt.node->comment.content);
@@ -54,9 +54,13 @@ int main(void) {
 	printf("%s(%f)\n", expr.node->expr.nodes[0]->var.name, expr.node->expr.nodes[1]->num.val);
 	*/
 
-	;
+	if (argc < 2) {
+		fprintf(stderr, "usage:\t%s <program code>\n", argv[0]);
+		return 1;
+	}
+	const char *src = argv[1];
 
-	ProgramParseResult program = parseprogram("(let ([a 42]) (print a))");
+	ProgramParseResult program = parseprogram(src);
 	// printf("%zu\n", program.len); // 2
 	// printf("%g\n", program.nodes[0]->expr.nodes[1]->num.val); // 3
 	// printf("%g\n", program.nodes[1]->expr.nodes[1]->num.val); // 5
@@ -64,12 +68,14 @@ int main(void) {
 	if(program.err){
 		fprintf(stderr,"Program error: %s\n",program.err);
 		return 1;
+	} else if (program.len == 0) {
+		fprintf(stderr, "program is empty\n");
+		return 1;
 	}
 	char *str=stringify(program.nodes[0],0);
-	printf("%s\n", str);
+	printf("src:\n%s\n\n", src);
+	printf("stringify:\n%s\n", str);
 	free(str);
-
-	__asm("int3\n\t");
 
 	int col;
 	int row;
