@@ -1,3 +1,5 @@
 #include "ast.h"
 
-char *stringify(const Node *node,int lvl);
+char *typetostr(const ASTtype type);
+
+char *stringify(const Node *node, int lvl);

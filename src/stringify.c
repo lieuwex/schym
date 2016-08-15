@@ -5,6 +5,16 @@
 #include "stringify.h"
 #include "util.h"
 
+char *typetostr(const ASTtype type) {
+	switch (type) {
+	case AST_EXPR: return "expression";
+	case AST_VAR: return "variable";
+	case AST_STR: return "string";
+	case AST_NUM: return "number";
+	case AST_COMMENT: return "comment";
+	}
+}
+
 // #define INDENT "\t"
 #define INDENT "  "
 
