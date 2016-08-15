@@ -391,6 +391,11 @@ Node *node_copy(const Node *src) {
 	case AST_EXPR:
 		res->expr.len = src->expr.len;
 		res->expr.isquoted = src->expr.isquoted;
+		res->expr.nodes = malloc(src->expr.len, sizeof(Node*));
+		if (res->expr.nodes == NULL) {
+			free(res);
+			return NULL;
+		}
 		for (size_t i = 0; i < src->expr.len; i++) {
 			res->expr.nodes[i] = node_copy(src->expr.nodes[i]);
 		}
