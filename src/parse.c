@@ -171,7 +171,14 @@ static ParseResult parseexpression(const char **codep) {
 	node->expr.nodes = malloc(1, sizeof(Node*));
 	node->expr.isquoted = isquoted;
 
-	while (*code && *code != closetag) {
+	while (*code != closetag) {
+		if (*code == '\0') {
+			char *err;
+			asprintf(&err, "missing '%c'", closetag);
+			res.err = err;
+			break;
+		}
+
 		ParseResult item = _parse(&code);
 		if (item.err != NULL) {
 			res.err = item.err;
