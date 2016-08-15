@@ -57,6 +57,16 @@ static char *copystringfromend(const char *src, size_t len) {
 	return res;
 }
 
+static char *typetostr(const ASTtype type) {
+	switch (type) {
+	case AST_EXPR: return "expression";
+	case AST_VAR: return "variable";
+	case AST_STR: return "string";
+	case AST_NUM: return "number";
+	case AST_COMMENT: return "comment";
+	}
+}
+
 ParseResult _parse(const char **codep);
 
 static ParseResult parsecomment(const char **codep) {
@@ -184,7 +194,9 @@ static ParseResult parseexpression(const char **codep) {
 			res.err = item.err;
 			break;
 		} else if (item.node == NULL) {
-			res.err = "Invalid expression";
+			char *err;
+			asprintf(&err, "unexpected '%c'", *code);
+			res.err = err;
 			break;
 		}
 
@@ -267,11 +279,18 @@ ProgramParseResult parseprogram(const char *code) {
 			res.err = item.err;
 			break;
 		} else if (item.node == NULL) {
-			if (*code == ')') {
-				res.err = "extraneous ')'";
+			char *err;
+			if (*code == ')' || *code == ']') {
+				asprintf(&err, "extraneous '%c'", *code);
 			} else {
-				res.err = "invalid";
+				asprintf(&err, "unexpected '%c'", *code);
 			}
+			res.err = err;
+			break;
+		} else if (item.node->type != AST_EXPR) {
+			char *err;
+			asprintf(&err, "expected an expression, got a %s instead", typetostr(item.node->type));
+			res.err = err;
 			break;
 		}
 
