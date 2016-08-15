@@ -50,9 +50,17 @@ struct Node {
 	};
 };
 
+typedef struct Location {
+	int col;
+	int line;
+	int index;
+} Location;
+
 typedef struct ParseResult {
 	Node *node;
 	const char *err;
+	Location errloc;
+	const char *_errp;
 } ParseResult;
 
 typedef struct ProgramParseResult {
@@ -60,6 +68,8 @@ typedef struct ProgramParseResult {
 	size_t cap;
 	size_t len;
 	const char *err;
+	Location errloc;
+	const char *_errp;
 } ProgramParseResult;
 
 ParseResult parse(const char *code);

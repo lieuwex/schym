@@ -6,30 +6,6 @@
 #include "stringify.h"
 #include "interpreter/interpreter.h"
 
-static void getpos(const int index, const char *code, int *col, int *line) {
-	unsigned int currcol = 1;
-	unsigned int currline = 1;
-	int currindex = 0;
-	while (*code) {
-		if (currindex == index) {
-			*col = currcol;
-			*line = currline;
-			return;
-		} else if (*code == '\n') {
-			currline++;
-			currcol = 1;
-		} else {
-			currcol++;
-		}
-		code++;
-		currindex++;
-	}
-
-	// index not found
-	*col = -1;
-	*line = -1;
-}
-
 char* readfile(const char *fname){
 	FILE *f=fopen(fname,"rb");
 	if(!f)return NULL;
@@ -90,7 +66,7 @@ int main(int argc, char **argv) {
 	// printf("%g\n", program.nodes[1]->expr.nodes[1]->num.val); // 5
 	// printf("%s\n", program.err); // (null)
 	if(program.err){
-		fprintf(stderr,"Program error: %s\n",program.err);
+		fprintf(stderr,"Program error: %s at line %d col %d\n",program.err,program.errloc.line,program.errloc.col);
 		return 1;
 	} else if (program.len == 0) {
 		fprintf(stderr, "program is empty\n");

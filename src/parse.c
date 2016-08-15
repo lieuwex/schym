@@ -6,8 +6,6 @@
 #include "util.h"
 #include "stringify.h"
 
-// TODO: handle errors way better
-
 static Node *make_node(ASTtype type) {
 	Node *res = malloc(1, sizeof(Node));
 	res->type = type;
@@ -18,6 +16,7 @@ static ParseResult make_parse_res(void) {
 	ParseResult res;
 	res.node = NULL;
 	res.err = NULL;
+	res._errp = NULL;
 	return res;
 }
 
@@ -112,6 +111,7 @@ static ParseResult parsenumber(const char **codep) {
 	double val = strtod(buf, &endptr);
 	if (*endptr != '\0') {
 		res.err = "invalid number";
+		res._errp = *codep;
 		return res;
 	}
 	free(buf);
@@ -136,6 +136,7 @@ static ParseResult parsestring(const char **codep) {
 	while (*code != '"') {
 		if (*code == '\0' || *code == '\n') {
 			res.err = "string unended";
+			res._errp = code - 1;
 			return res;
 		}
 		code++;
@@ -164,6 +165,7 @@ static ParseResult parseexpression(const char **codep) {
 			// quoted state in a state machine we give in each parse function,
 			// this could also then contain the current index.
 			res.err = "invalid quoted expression";
+			res._errp = code;
 			return res;
 		}
 		isquoted = true;
@@ -186,17 +188,20 @@ static ParseResult parseexpression(const char **codep) {
 			char *err;
 			asprintf(&err, "missing '%c'", closetag);
 			res.err = err;
+			res._errp = code - 1;
 			break;
 		}
 
 		ParseResult item = _parse(&code);
 		if (item.err != NULL) {
 			res.err = item.err;
+			res._errp = item._errp;
 			break;
 		} else if (item.node == NULL) {
 			char *err;
 			asprintf(&err, "unexpected '%c'", *code);
 			res.err = err;
+			res._errp = code;
 			break;
 		}
 
@@ -262,8 +267,41 @@ ParseResult _parse(const char **codep) {
 	return res; // nothing found
 }
 
+Location getpos(const int index, const char *code) {
+	Location loc;
+	loc.index = index;
+
+	// no need to walk over the whole string when we can be sure that the index
+	// can't be found.
+	if (index >= 0) {
+		loc.col = 1;
+		loc.line = 1;
+		int currindex = 0;
+		while (*code) {
+			if (currindex == index) {
+				return loc;
+			} else if (*code == '\n') {
+				loc.line++;
+				loc.col = 1;
+			} else {
+				loc.col++;
+			}
+			code++;
+			currindex++;
+		}
+	}
+
+	// index not found
+	loc.col = -1;
+	loc.line = -1;
+	return loc;
+}
+
 ParseResult parse(const char *code) {
-	return _parse(&code);
+	const char *codestart = code;
+	ParseResult res = _parse(&code);
+	res.errloc = getpos(code - codestart, codestart);
+	return res;
 }
 
 ProgramParseResult parseprogram(const char *code) {
@@ -272,11 +310,13 @@ ProgramParseResult parseprogram(const char *code) {
 	res.len = 0;
 	res.err = NULL;
 	res.nodes = malloc(res.cap, sizeof(Node*));
+	const char *codestart = code;
 
 	while (*code != '\0') {
 		ParseResult item = _parse(&code);
 		if (item.err != NULL) {
 			res.err = item.err;
+			res.errloc = getpos(item._errp - codestart, codestart);
 			break;
 		} else if (item.node == NULL) {
 			char *err;
@@ -286,11 +326,14 @@ ProgramParseResult parseprogram(const char *code) {
 				asprintf(&err, "unexpected '%c'", *code);
 			}
 			res.err = err;
+			res.errloc = getpos(item._errp - codestart, codestart);
 			break;
 		} else if (item.node->type != AST_EXPR) {
 			char *err;
 			asprintf(&err, "expected an expression, got a %s instead", typetostr(item.node->type));
 			res.err = err;
+			res.errloc.col = 1;
+			res.errloc.line = 1;
 			break;
 		}
 
