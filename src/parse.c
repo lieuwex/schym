@@ -57,7 +57,7 @@ static char *copystringfromend(const char *src, size_t len) {
 	return res;
 }
 
-static char *typetostr(const ASTtype type) {
+char *typetostr(const ASTtype type) {
 	switch (type) {
 	case AST_EXPR: return "expression";
 	case AST_VAR: return "variable";
