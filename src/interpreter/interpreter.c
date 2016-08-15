@@ -170,7 +170,7 @@ RunResult in_run(InterState *scope,const Node *node){
 	switch(node->type){
 		case AST_EXPR:
 			if(node->expr.isquoted)return rr_node(node_copy(node));
-			if(node->expr.len==0)return rr_null();
+			if(node->expr.len==0)return rr_errf("Non-quoted expression can't be empty");
 			if(node->expr.nodes[0]->type!=AST_VAR){
 				return rr_errf("Cannot call non-variable (type %s)",
 						typetostr(node->expr.nodes[0]->type));
