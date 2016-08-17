@@ -216,16 +216,21 @@ static ParseResult parseexpression(const char **codep) {
 	return res;
 }
 
+static inline bool isvarchar(const char c) {
+	return !isspace(c) &&
+		c != '(' && c != ')' &&
+		c != '[' && c != ']';
+}
 static ParseResult parsevariable(const char **codep) {
 	const char *code = *codep;
 	ParseResult res = make_parse_res();
 
-	if (!isalpha(*code)) {
+	if (!isvarchar(*code)) {
 		return res;
 	}
 
 	size_t len = 0;
-	while (*code && isalphanum(*code)) {
+	while (*code && isvarchar(*code)) {
 		len++;
 		code++;
 	}
