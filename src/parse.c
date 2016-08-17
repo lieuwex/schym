@@ -308,6 +308,7 @@ ProgramParseResult parseprogram(const char *code) {
 	const char *codestart = code;
 
 	while (*code != '\0') {
+		const char *beforeitem = code;
 		ParseResult item = _parse(&code);
 		if (item.err != NULL) {
 			res.err = item.err;
@@ -317,18 +318,18 @@ ProgramParseResult parseprogram(const char *code) {
 			char *err;
 			if (*code == ')' || *code == ']') {
 				asprintf(&err, "extraneous '%c'", *code);
+				res.errloc = getpos(code - codestart, codestart);
 			} else {
 				asprintf(&err, "unexpected '%c'", *code);
+				res.errloc = getpos(item._errp - codestart, codestart);
 			}
 			res.err = err;
-			res.errloc = getpos(item._errp - codestart, codestart);
 			break;
 		} else if (item.node->type != AST_EXPR) {
 			char *err;
 			asprintf(&err, "expected an expression, got a %s instead", typetostr(item.node->type));
 			res.err = err;
-			res.errloc.col = 1;
-			res.errloc.line = 1;
+			res.errloc = getpos(beforeitem - codestart, codestart);
 			break;
 		}
 

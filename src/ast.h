@@ -69,7 +69,6 @@ typedef struct ProgramParseResult {
 	size_t len;
 	const char *err;
 	Location errloc;
-	const char *_errp;
 } ProgramParseResult;
 
 ParseResult parse(const char *code);
