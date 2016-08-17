@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -402,6 +403,7 @@ Node *node_copy(const Node *src) {
 			free(res);
 			return NULL;
 		}
+		assert(res->expr.nodes);
 		for (size_t i = 0; i < src->expr.len; i++) {
 			res->expr.nodes[i] = node_copy(src->expr.nodes[i]);
 		}
