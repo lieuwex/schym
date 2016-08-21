@@ -10,4 +10,6 @@ bool isalphanum(const char);
 
 bool streq(const char*, const char*);
 
+void strappend(char**, const char*);
+
 char *astrcpy(const char *src);

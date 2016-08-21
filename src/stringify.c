@@ -23,13 +23,6 @@ char *typetostr(const Node *node) {
 // #define INDENT "\t"
 #define INDENT "  "
 
-static void appendstr(char **str,const char *app){
-	int l1=strlen(*str),l2=strlen(app);
-	*str=realloc(*str,l1+l2+1,sizeof(char));
-	assert(*str);
-	memcpy(*str+l1,app,l2+1);
-}
-
 char *stringify(const Node *node,int lvl) {
 	assert(node);
 	char *res=malloc(1,sizeof(char));
@@ -45,50 +38,50 @@ char *stringify(const Node *node,int lvl) {
 			break;
 
 		case AST_EXPR:
-			appendstr(&res,"(");
+			strappend(&res,"(");
 			bool didindent=false;
 			bool issmall = node->expr.len < 3;
 			for(size_t i=0;i<node->expr.len;i++){
 				if (i!=0){
 					didindent=true;
 					if (issmall) {
-						appendstr(&res," ");
+						strappend(&res," ");
 					} else {
-						appendstr(&res,"\n");
+						strappend(&res,"\n");
 						for(int x=0;x<lvl+1;x++) {
-							appendstr(&res,INDENT);
+							strappend(&res,INDENT);
 						}
 					}
 				}
 				char *str=stringify(node->expr.nodes[i],lvl+didindent);
-				appendstr(&res, str);
+				strappend(&res, str);
 				free(str);
 			}
-			appendstr(&res,")");
+			strappend(&res,")");
 			break;
 
 		case AST_VAR:
-			appendstr(&res,node->var.name);
+			strappend(&res,node->var.name);
 			break;
 
 		case AST_STR:
-			appendstr(&res,"\"");
-			appendstr(&res,node->str.str);
-			appendstr(&res,"\"");
+			strappend(&res,"\"");
+			strappend(&res,node->str.str);
+			strappend(&res,"\"");
 			break;
 
 		case AST_NUM:{
 			char *buf;
 			asprintf(&buf,"%g",node->num.val);
 			assert(buf);
-			appendstr(&res,buf);
+			strappend(&res,buf);
 			free(buf);
 			break;
 		}
 
 		case AST_COMMENT: {
-			appendstr(&res, "; ");
-			appendstr(&res, node->comment.content);
+			strappend(&res, "; ");
+			strappend(&res, node->comment.content);
 			break;
 		}
 	}
