@@ -160,7 +160,7 @@ static RunResult builtin_arith(InterState *scope,char func,const Node **args,siz
 
 static RunResult in_funccall(InterState *scope,const char *name,const Node **args,size_t nargs){
 	if(streq(name,"print"))return builtin_print(scope,args,nargs);
-	else if(strlen(name)==0&&strchr("+-*/%",name[0])!=NULL)return builtin_arith(scope,'+',args,nargs);
+	else if(strlen(name)==1&&strchr("+-*/%",name[0])!=NULL)return builtin_arith(scope,name[0],args,nargs);
 	else return rr_errf("Unknown function '%s'",name);
 }
 
