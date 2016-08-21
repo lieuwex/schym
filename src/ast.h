@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 typedef enum ASTtype {
+	AST_QUOTED,
 	AST_EXPR,
 	AST_VAR,
 	AST_STR,
@@ -14,10 +15,13 @@ typedef enum ASTtype {
 
 typedef struct Node Node;
 
+typedef struct Quoted {
+	Node *node;
+} Quoted;
+
 typedef struct Expression {
 	size_t len;
 	Node **nodes;
-	bool isquoted;
 } Expression;
 
 typedef struct Variable {
@@ -42,6 +46,7 @@ struct Node {
 	int index;
 	ASTtype type;
 	union {
+		Quoted quoted;
 		Expression expr;
 		Variable var;
 		String str;

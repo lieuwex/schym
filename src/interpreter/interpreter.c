@@ -138,7 +138,7 @@ static RunResult builtin_arith(InterState *scope,char func,const Node **args,siz
 	Node *x1=r1.node,*x2=r2.node;
 	if(x1->type!=AST_NUM||x2->type!=AST_NUM){
 		return rr_errf("Arithmetic operator '%c' expected numbers, got %s and %s",
-					typetostr(x1->type),typetostr(x2->type));
+					typetostr(x1),typetostr(x2));
 	}
 	double v1=x1->num.val,v2=x2->num.val;
 	node_free(x1); node_free(x2);
@@ -168,12 +168,14 @@ RunResult in_run(InterState *scope,const Node *node){
 	assert(node);
 	assert(scope);
 	switch(node->type){
+		case AST_QUOTED:
+			return rr_node(node_copy(node));
+
 		case AST_EXPR:
-			if(node->expr.isquoted)return rr_node(node_copy(node));
 			if(node->expr.len==0)return rr_errf("Non-quoted expression can't be empty");
 			if(node->expr.nodes[0]->type!=AST_VAR){
 				return rr_errf("Cannot call non-variable (type %s)",
-						typetostr(node->expr.nodes[0]->type));
+						typetostr(node->expr.nodes[0]));
 			}
 			return in_funccall(scope,node->expr.nodes[0]->var.name,(const Node**)(node->expr.nodes+1),node->expr.len-1);
 

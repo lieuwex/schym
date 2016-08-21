@@ -148,31 +148,16 @@ static ParseResult parseexpression(const char **codep) {
 	const char *code = *codep;
 	ParseResult res = make_parse_res();
 
-	bool isquoted = false;
-
-	if (code[0] == '\'') {
-		if (code[1] != '(') {
-			// TODO: everything should be able to be quoted, we can hold the
-			// quoted state in a state machine we give in each parse function,
-			// this could also then contain the current index.
-			res.err = "invalid quoted expression";
-			res._errp = code;
-			return res;
-		}
-		isquoted = true;
-		code += 2;
-	} else if (code[0] == '(' || code[0] == '[') {
-		code++;
-	} else {
+	if (code[0] != '(' && code[0] != '[') {
 		return res;
 	}
+	code++;
 
 	char closetag = code[-1] == '(' ? ')' : ']';
 
 	Node *node = make_node(AST_EXPR);
 	node->expr.len = 0;
 	node->expr.nodes = malloc(1, sizeof(Node*));
-	node->expr.isquoted = isquoted;
 
 	while (*code != closetag) {
 		if (*code == '\0') {
@@ -217,6 +202,37 @@ static ParseResult parseexpression(const char **codep) {
 	return res;
 }
 
+static ParseResult parsequoted(const char **codep) {
+	const char *code = *codep;
+	ParseResult res = make_parse_res();
+
+	if (*code != '\'') {
+		return res;
+	}
+	code++;
+
+	ParseResult item = _parse(&code);
+	if (item.err != NULL) {
+		return item;
+	} else if (item.node == NULL) {
+		char *err;
+		asprintf(&err, "unexpected '%c'", *code);
+		res.err = err;
+		res._errp = code;
+		return res;
+	}
+
+	if (item.node->type != AST_EXPR && item.node->type != AST_VAR) {
+		return item;
+	}
+
+	res.node = make_node(AST_QUOTED);
+	res.node->quoted.node = item.node;
+
+	*codep = code;
+	return res;
+}
+
 static inline bool isvarchar(const char c) {
 	return !isspace(c) &&
 		c != '(' && c != ')' &&
@@ -256,6 +272,7 @@ ParseResult _parse(const char **codep) {
 	res = parsenumber(codep); if (res.node || res.err) return res;
 	res = parsestring(codep); if (res.node || res.err) return res;
 	res = parseexpression(codep); if (res.node || res.err) return res;
+	res = parsequoted(codep); if (res.node || res.err) return res;
 
 	// should be last
 	res = parsevariable(codep); if (res.node || res.err) return res;
@@ -328,7 +345,7 @@ ProgramParseResult parseprogram(const char *code) {
 			break;
 		} else if (item.node->type != AST_EXPR) {
 			char *err;
-			asprintf(&err, "expected an expression, got a %s instead", typetostr(item.node->type));
+			asprintf(&err, "expected an expression, got a %s instead", typetostr(item.node));
 			res.err = err;
 			res.errloc = getpos(beforeitem - codestart, codestart);
 			break;
@@ -361,6 +378,10 @@ void node_free(Node *node) {
 	}
 
 	switch (node->type) {
+	case AST_QUOTED:
+		node_free(node->quoted.node);
+		break;
+
 	case AST_EXPR: {
 		Expression *expr = &node->expr;
 		for (size_t i = 0; i < expr->len; i++) {
@@ -395,9 +416,12 @@ Node *node_copy(const Node *src) {
 	Node *res = make_node(src->type);
 
 	switch (src->type) {
+	case AST_QUOTED:
+		res->quoted.node = node_copy(src->quoted.node);
+		break;
+
 	case AST_EXPR:
 		res->expr.len = src->expr.len;
-		res->expr.isquoted = src->expr.isquoted;
 		res->expr.nodes = malloc(src->expr.len, sizeof(Node*));
 		if (res->expr.nodes == NULL) {
 			free(res);

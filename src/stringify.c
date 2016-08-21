@@ -5,8 +5,13 @@
 #include "stringify.h"
 #include "util.h"
 
-char *typetostr(const ASTtype type) {
-	switch (type) {
+char *typetostr(const Node *node) {
+	switch (node->type) {
+	case AST_QUOTED: {
+		char *res;
+		asprintf(&res, "quoted %s", typetostr(node->quoted.node));
+		return res;
+	}
 	case AST_EXPR: return "expression";
 	case AST_VAR: return "variable";
 	case AST_STR: return "string";
@@ -32,15 +37,21 @@ char *stringify(const Node *node,int lvl) {
 	res[0]='\0';
 
 	switch(node->type){
+		case AST_QUOTED:
+			strappend(&res, "'");
+			char *str = stringify(node->quoted.node, lvl);
+			strappend(&res, str);
+			free(str);
+			break;
+
 		case AST_EXPR:
-			if(node->expr.isquoted)appendstr(&res,"'");
 			appendstr(&res,"(");
 			bool didindent=false;
 			bool issmall = node->expr.len < 3;
 			for(size_t i=0;i<node->expr.len;i++){
 				if (i!=0){
 					didindent=true;
-					if (node->expr.isquoted || issmall) {
+					if (issmall) {
 						appendstr(&res," ");
 					} else {
 						appendstr(&res,"\n");
