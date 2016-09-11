@@ -92,7 +92,7 @@ static ParseResult parsenumber(const char **codep) {
 	}
 
 	size_t len = 0;
-	while (isalphanum(*code) || *code == '.') {
+	while (isalnum(*code) || *code == '.') {
 		code++;
 		len++;
 	}

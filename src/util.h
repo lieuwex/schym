@@ -6,8 +6,6 @@
 #define malloc(count, size) malloc(count * size)
 #define realloc(ptr, count, size) realloc(ptr, count * size)
 
-bool isalphanum(const char);
-
 bool streq(const char*, const char*);
 
 void strappend(char**, const char*);

@@ -3,10 +3,6 @@
 #include <assert.h>
 #include "util.h"
 
-bool isalphanum(const char c) {
-	return isalpha(c) || isdigit(c);
-}
-
 bool streq(const char *a, const char *b) {
 	return strcmp(a, b) == 0;
 }
