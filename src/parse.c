@@ -223,6 +223,7 @@ static ParseResult parsequoted(const char **codep) {
 	}
 
 	if (item.node->type != AST_EXPR && item.node->type != AST_VAR) {
+		*codep = code;
 		return item;
 	}
 
