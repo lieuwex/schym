@@ -11,3 +11,5 @@ RunResult rr_errf(const char*, ...);
 RunResult rr_node(Node *);
 
 RunResult run(InterEnv*, const Node*);
+
+double getNumVal(InterEnv *, const Node*);

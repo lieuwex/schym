@@ -85,6 +85,28 @@ RunResult builtin_arith(InterEnv *env, const char *name, size_t nargs, const Nod
 	return rr_node(res);
 }
 
+RunResult builtin_comp(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	EXPECT(== 2);
+
+	Node *res = malloc(1, sizeof(Node));
+	res->type = AST_NUM;
+
+	double n1 = getNumVal(env, args[0]);
+	double n2 = getNumVal(env, args[1]);
+
+	if (streq(name, "eq")) {
+		res->num.val = n1 == n2;
+	} else if (streq(name, "neq")) {
+		res->num.val = n1 != n2;
+	} else if (streq(name, "lt")) {
+		res->num.val = n1 < n2;
+	} else if (streq(name, "gt")) {
+		res->num.val = n1 > n2;
+	}
+
+	return rr_node(res);
+}
+
 RunResult builtin_do(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
@@ -163,7 +185,7 @@ RunResult builtin_let(InterEnv *env, const char *name, size_t nargs, const Node 
 	return rr;
 }
 
-#define STATIC_BUILTIN_COUNT 9
+#define STATIC_BUILTIN_COUNT 13
 Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 	{
 		.name = "print",
@@ -185,6 +207,22 @@ Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 		.name = "*",
 		.enabled = true,
 		.fn = builtin_arith,
+	}, {
+		.name = "eq",
+		.enabled = true,
+		.fn = builtin_comp,
+	}, {
+		.name = "neq",
+		.enabled = true,
+		.fn = builtin_comp,
+	}, {
+		.name = "lt",
+		.enabled = true,
+		.fn = builtin_comp,
+	}, {
+		.name = "gt",
+		.enabled = true,
+		.fn = builtin_comp,
 	}, {
 		.name = "do",
 		.enabled = true,

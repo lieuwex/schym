@@ -61,6 +61,38 @@ RunResult rr_node(Node *node) {
 	return res;
 }
 
+double getNumVal(InterEnv *env, const Node *node) {
+	switch (node->type) {
+		case AST_NUM:
+			return node->num.val;
+
+		case AST_VAR:
+		case AST_EXPR: {
+			RunResult rr = run(env, node);
+			assert(rr.err == NULL);
+			double res = getNumVal(env, rr.node);
+			if (rr.node != NULL) {
+				node_free(rr.node);
+			}
+			return res;
+		}
+
+		case AST_STR:
+			fprintf(stderr, "%f\n", (double)(long)node->str.str);
+			return (long)node->str.str;
+
+		case AST_QUOTED:
+			if (node->quoted.node->type == AST_VAR) {
+				return (long)node->quoted.node->var.name;
+			}
+			assert(false);
+			return 0;
+
+		default:
+			return 0;
+	}
+}
+
 static RunResult funcCall(InterEnv *env, const char *name, const Node **args, size_t nargs) {
 	const Builtin *builtin = getBuiltin(name);
 	if (builtin != NULL) {
