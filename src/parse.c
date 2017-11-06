@@ -87,7 +87,9 @@ static ParseResult parsenumber(const char **codep) {
 	const char *code = *codep;
 	ParseResult res = make_parse_res();
 
-	if (!isdigit(*code) && *code != '.' && *code != '-') {
+	if (*code == '-' && !(isdigit(code[1]) || code[1] == '.')) {
+		return res;
+	} else if (!isdigit(*code) && *code != '.' && *code != '-') {
 		return res;
 	}
 
