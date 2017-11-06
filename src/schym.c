@@ -60,6 +60,12 @@ int main(int argc, char **argv) {
 		if (FLAG("-e", "--eval")) {
 			i++;
 			src = astrcpy(argv[i]);
+		} else if (FLAG("-f", "--format")) {
+			i++;
+			src = astrcpy(argv[i]);
+			ProgramParseResult p = parseprogram(src);
+			printf("%s\n", stringify(p.nodes[0], 0));
+			return 0;
 		} else if (FLAG("-h", "--help")) {
 			printusage(argv[0]);
 			return 0;
