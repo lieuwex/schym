@@ -12,20 +12,17 @@
 
 // TODO: some way to handle builtins
 
-struct InterEnv {
-};
-InterEnv* in_make(void){
-	InterEnv *in=malloc(1,sizeof(InterEnv));
+InterEnv* in_make(void) {
+	InterEnv *in = malloc(1,sizeof(InterEnv));
 	assert(in);
+	in->variables = varmap_make();
+	assert(in->variables);
 	return in;
 }
 
-static void in_destroy_(InterEnv *is){
+void in_destroy(InterEnv *is) {
+	varmap_free(is->variables);
 	free(is);
-}
-
-void in_destroy(InterEnv *is){
-	in_destroy_(is);
 }
 
 RunResult rr_null(void) {
@@ -106,9 +103,14 @@ RunResult run(InterEnv *env, const Node *node) {
 		);
 	}
 
-	case AST_VAR:
-		// TODO: return var
-		return rr_null();
+	case AST_VAR: {
+		const Node *val = varmap_getItem(env->variables, node->var.name);
+		if (val == NULL) {
+			return rr_null();
+		} else {
+			return rr_node(node_copy(val));
+		}
+	}
 
 	case AST_COMMENT:
 		return rr_null();

@@ -13,6 +13,12 @@
 	} \
 } while(0)
 
+#define EXPECT_TYPE(narg, typ) do { \
+	if (args[(narg)]->type != (typ)) { \
+		return rr_errf("expected argument %d to be of type %s", narg, #typ); \
+	} \
+} while(0)
+
 RunResult builtin_print(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 	EXPECT(>= 1);
@@ -117,7 +123,47 @@ RunResult builtin_if(InterEnv *env, const char *name, size_t nargs, const Node *
 	return rr_null();
 }
 
-#define STATIC_BUILTIN_COUNT 7
+RunResult builtin_set(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(== 2);
+	EXPECT_TYPE(0, AST_VAR);
+
+	RunResult rr = run(env, args[1]);
+	if (rr.err != NULL) {
+		return rr;
+	}
+
+	if (rr.node == NULL) {
+		varmap_removeItem(env->variables, args[0]->var.name);
+	} else {
+		varmap_setItem(env->variables, args[0]->var.name, rr.node);
+	}
+
+	return rr_null();
+}
+
+RunResult builtin_let(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(>= 3);
+
+	builtin_set(env, "set", 2, args);
+
+	RunResult rr;
+	for (size_t i = 2; i < nargs; i++) {
+		rr = run(env, args[i]);
+		if (rr.err != NULL) {
+			return rr;
+		}
+	}
+
+	varmap_removeItem(env->variables, args[0]->var.name);
+
+	return rr;
+}
+
+#define STATIC_BUILTIN_COUNT 9
 Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 	{
 		.name = "print",
@@ -147,6 +193,14 @@ Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 		.name = "if",
 		.enabled = true,
 		.fn = builtin_if,
+	}, {
+		.name = "set",
+		.enabled = true,
+		.fn = builtin_set,
+	}, {
+		.name = "let",
+		.enabled = true,
+		.fn = builtin_let,
 	}
 };
 
