@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "stringify.h"
 #include "interpreter/interpreter.h"
+#include "intern.h"
 #include "util.h"
 
 char* readfile(const char *fname){
@@ -91,6 +92,9 @@ int main(int argc, char **argv) {
 	InterState *is = in_make();
 	RunResult res = in_run(is, program.nodes[0]);
 	in_destroy(is);
+	InternEnvironment *env = ie_make();
+	InternedNode interned = intern(program.nodes[0], env);
+	ie_free(env, false);
 	if (res.err != NULL) {
 		fprintf(stderr, "Error while executing code: %s\n", res.err);
 		return 1;
