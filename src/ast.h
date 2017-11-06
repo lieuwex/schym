@@ -43,7 +43,6 @@ typedef struct Comment {
 } Comment;
 
 struct Node {
-	int index;
 	ASTtype type;
 	union {
 		Quoted quoted;

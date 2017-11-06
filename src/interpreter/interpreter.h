@@ -1,11 +1,12 @@
 #pragma once
 
 #include "../ast.h"
+#include "../intern.h"
 
-typedef struct InterState InterState;
+typedef struct InterEnv InterEnv;
 
-InterState* in_make(void);
-void in_destroy(InterState *is);
+InterEnv* in_make(void);
+void in_destroy(InterEnv *is);
 
 typedef struct RunResult{
 	// If err != NULL, node will be NULL.
@@ -14,5 +15,4 @@ typedef struct RunResult{
 	char *err;
 } RunResult;
 
-//returns the Node returned, or NULL if nothing
-RunResult in_run(InterState *is,const Node *node);
+RunResult in_run(InterEnv*, const InternedNode);

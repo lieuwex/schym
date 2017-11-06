@@ -89,12 +89,13 @@ int main(int argc, char **argv) {
 
 	free(src);
 
-	InterState *is = in_make();
-	RunResult res = in_run(is, program.nodes[0]);
-	in_destroy(is);
 	InternEnvironment *env = ie_make();
 	InternedNode interned = intern(program.nodes[0], env);
 	ie_free(env, false);
+
+	InterEnv *is = in_make();
+	RunResult res = in_run(is, interned);
+	//in_destroy(is);
 	if (res.err != NULL) {
 		fprintf(stderr, "Error while executing code: %s\n", res.err);
 		return 1;

@@ -88,3 +88,17 @@ char *stringify(const Node *node,int lvl) {
 
 	return res;
 }
+
+char *toString(const Node *node) {
+	char *res;
+
+	if (node == NULL) {
+		return astrcpy("nil");
+	} else if (node->type == AST_STR) {
+		res = astrcpy(node->str.str);
+	} else {
+		res = stringify(node, 0);
+	}
+
+	return res;
+}
