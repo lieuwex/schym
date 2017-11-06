@@ -185,7 +185,33 @@ RunResult builtin_let(InterEnv *env, const char *name, size_t nargs, const Node 
 	return rr;
 }
 
-#define STATIC_BUILTIN_COUNT 13
+RunResult builtin_streq(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(== 2);
+
+	Node *res = malloc(1, sizeof(Node));
+	res->type = AST_NUM;
+
+	RunResult rr1 = run(env, args[0]);
+	RunResult rr2 = run(env, args[1]);
+
+	if (
+		(rr1.node->type != AST_STR) ||
+		(rr2.node->type != AST_STR)
+	) {
+		return rr_errf("both arguments should be a string");
+	}
+
+	res->num.val = (
+		rr1.node->str.str == rr2.node->str.str ||
+		streq(rr1.node->str.str, rr2.node->str.str)
+	);
+
+	return rr_node(res);
+}
+
+#define STATIC_BUILTIN_COUNT 14
 Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 	{
 		.name = "print",
@@ -239,6 +265,10 @@ Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 		.name = "let",
 		.enabled = true,
 		.fn = builtin_let,
+	}, {
+		.name = "streq",
+		.enabled = true,
+		.fn = builtin_streq,
 	}
 };
 
