@@ -270,15 +270,18 @@ ParseResult _parse(const char **codep) {
 	if (!*codep) return res;
 	skipspaces(codep);
 
+#define TRY_PARSE_FN(fn) res = fn(codep); if (res.node || res.err) return res;
 
-	res = parsecomment(codep); if (res.node || res.err) return res;
-	res = parsenumber(codep); if (res.node || res.err) return res;
-	res = parsestring(codep); if (res.node || res.err) return res;
-	res = parseexpression(codep); if (res.node || res.err) return res;
-	res = parsequoted(codep); if (res.node || res.err) return res;
+	TRY_PARSE_FN(parsecomment);
+	TRY_PARSE_FN(parsenumber);
+	TRY_PARSE_FN(parsestring);
+	TRY_PARSE_FN(parseexpression);
+	TRY_PARSE_FN(parsequoted);
 
 	// should be last
-	res = parsevariable(codep); if (res.node || res.err) return res;
+	TRY_PARSE_FN(parsevariable);
+
+#undef TRY_PARSE_FN
 
 	return res; // nothing found
 }
