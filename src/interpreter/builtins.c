@@ -211,7 +211,60 @@ RunResult builtin_streq(InterEnv *env, const char *name, size_t nargs, const Nod
 	return rr_node(res);
 }
 
-#define STATIC_BUILTIN_COUNT 14
+Node *mkQuotedExpr(size_t len) {
+	Node *res = malloc(1, sizeof(Node));
+	res->type = AST_QUOTED;
+
+	res->quoted.node = malloc(1, sizeof(Node));
+	res->quoted.node->type = AST_EXPR;
+
+	res->quoted.node->expr.len = len;
+	res->quoted.node->expr.nodes = malloc(len, sizeof(Node*));
+
+	return res;
+}
+
+RunResult builtin_fun(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)env;
+	(void)name;
+
+	EXPECT(>= 2);
+	EXPECT_TYPE(0, AST_EXPR);
+
+	Node **fn_args = args[0]->expr.nodes;
+	size_t fn_nargs = args[0]->expr.len;
+	char **fn_arg_names = malloc(fn_nargs, sizeof(char*));
+	for (size_t i = 0; i < fn_nargs; i++) {
+		fn_arg_names[i] = fn_args[i]->var.name;
+	}
+
+	// REVIEW????
+
+	// '(fn (a b c) ...)
+
+	Node *argsNode = malloc(1, sizeof(Node));
+	argsNode->type = AST_EXPR;
+	argsNode->expr.len = fn_nargs;
+	argsNode->expr.nodes = malloc(fn_nargs, sizeof(Node*));
+	for (size_t i = 0; i < fn_nargs; i++) {
+		argsNode->expr.nodes[i] = node_copy(args[0]->expr.nodes[i]);
+	}
+
+	Node *toStore = mkQuotedExpr(nargs + 1);
+
+	toStore->quoted.node->expr.nodes[0] = malloc(1, sizeof(Node));
+	toStore->quoted.node->expr.nodes[0]->type = AST_VAR;
+	toStore->quoted.node->expr.nodes[0]->var.name = astrcpy("fn");
+
+	toStore->quoted.node->expr.nodes[1] = argsNode;
+	for (size_t i = 1; i < nargs; i++) {
+		toStore->quoted.node->expr.nodes[i+1] = node_copy(args[i]);
+	}
+
+	return rr_node(toStore);
+}
+
+#define STATIC_BUILTIN_COUNT 15
 Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 	{
 		.name = "print",
@@ -269,6 +322,10 @@ Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
 		.name = "streq",
 		.enabled = true,
 		.fn = builtin_streq,
+	}, {
+		.name = "fun",
+		.enabled = true,
+		.fn = builtin_fun,
 	}
 };
 
