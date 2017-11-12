@@ -272,7 +272,6 @@ static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const ch
 
 	res.function.isBuiltin = true;
 	res.function.fn = fn;
-	res.function.args.len = 0;
 
 	return res;
 }

@@ -51,10 +51,14 @@ typedef struct Comment {
 
 typedef struct Function {
 	bool isBuiltin;
-	Expression args; // not used when isBuiltin==true
 	union {
-		Node *body;
+	// if isBuiltin:
 		RunResult (*fn)(InterEnv*, const char*, size_t, const Node**);
+	// else:
+		struct {
+			Expression args;
+			Node *body;
+		};
 	};
 } Function;
 
