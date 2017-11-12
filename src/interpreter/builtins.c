@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 #include <stdarg.h>
 #include "../ast.h"
 #include "internal.h"
@@ -77,6 +78,9 @@ RunResult builtin_arith(InterEnv *env, const char *name, size_t nargs, const Nod
 		break;
 	case '*':
 		res->num.val = n1 * n2;
+		break;
+	case '^':
+		res->num.val = pow(n1, n2);
 		break;
 	}
 
@@ -273,7 +277,7 @@ static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const ch
 	return res;
 }
 
-#define STATIC_BUILTIN_COUNT 15
+#define STATIC_BUILTIN_COUNT 16
 static bool setup = false;
 Builtin staticbuiltins[STATIC_BUILTIN_COUNT];
 
@@ -283,16 +287,17 @@ void setBuiltins(void) {
 	staticbuiltins[ 2] = makeBuiltin("-", builtin_arith);
 	staticbuiltins[ 3] = makeBuiltin("/", builtin_arith);
 	staticbuiltins[ 4] = makeBuiltin("*", builtin_arith);
-	staticbuiltins[ 5] = makeBuiltin("eq", builtin_comp);
-	staticbuiltins[ 6] = makeBuiltin("neq", builtin_comp);
-	staticbuiltins[ 7] = makeBuiltin("lt", builtin_comp);
-	staticbuiltins[ 8] = makeBuiltin("gt", builtin_comp);
-	staticbuiltins[ 9] = makeBuiltin("do", builtin_do);
-	staticbuiltins[10] = makeBuiltin("if", builtin_if);
-	staticbuiltins[11] = makeBuiltin("set", builtin_set);
-	staticbuiltins[12] = makeBuiltin("let", builtin_let);
-	staticbuiltins[13] = makeBuiltin("streq", builtin_streq);
-	staticbuiltins[14] = makeBuiltin("fun", builtin_fun);
+	staticbuiltins[ 5] = makeBuiltin("^", builtin_arith);
+	staticbuiltins[ 6] = makeBuiltin("eq", builtin_comp);
+	staticbuiltins[ 7] = makeBuiltin("neq", builtin_comp);
+	staticbuiltins[ 8] = makeBuiltin("lt", builtin_comp);
+	staticbuiltins[ 9] = makeBuiltin("gt", builtin_comp);
+	staticbuiltins[10] = makeBuiltin("do", builtin_do);
+	staticbuiltins[11] = makeBuiltin("if", builtin_if);
+	staticbuiltins[12] = makeBuiltin("set", builtin_set);
+	staticbuiltins[13] = makeBuiltin("let", builtin_let);
+	staticbuiltins[14] = makeBuiltin("streq", builtin_streq);
+	staticbuiltins[15] = makeBuiltin("fun", builtin_fun);
 }
 
 Builtin *getBuiltin(const char *name) {
