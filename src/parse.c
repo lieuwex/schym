@@ -407,6 +407,16 @@ void node_free(Node *node) {
 		free(node->comment.content);
 		break;
 	}
+	case AST_FUN: {
+		if (!node->function.isBuiltin) {
+			Function *fn = &node->function;
+			node_free(fn->body);
+			for (size_t i = 0; i < fn->args.len; i++) {
+				node_free(fn->args.nodes[i]);
+			}
+		}
+		break;
+	}
 	case AST_NUM:
 		break;
 	}
@@ -455,6 +465,15 @@ Node *node_copy(const Node *src) {
 	case AST_COMMENT:
 		res->comment.content = astrcpy(src->comment.content);
 		break;
+
+	case AST_FUN:
+		res->function.isBuiltin = src->function.isBuiltin;
+		if (src->function.isBuiltin) {
+			res->function.fn = src->function.fn;
+		} else {
+			res->function.args = src->function.args; // REVIEW
+			res->function.body = node_copy(src->function.body);
+		}
 	}
 
 	return res;

@@ -17,6 +17,7 @@ char *typetostr(const Node *node) {
 	case AST_STR: return "string";
 	case AST_NUM: return "number";
 	case AST_COMMENT: return "comment";
+	case AST_FUN: return "function";
 	}
 }
 
@@ -82,6 +83,25 @@ char *stringify(const Node *node,int lvl) {
 		case AST_COMMENT: {
 			strappend(&res, "; ");
 			strappend(&res, node->comment.content);
+			break;
+		}
+
+		case AST_FUN: {
+			size_t nargs = node->function.args.len;
+			char *buf;
+
+			asprintf(
+				&buf,
+				"[%s function with %ld argument%s ]",
+				node->function.isBuiltin ? " builtin" : "",
+				nargs,
+				nargs == 1 ? "" : "s"
+			);
+			assert(buf);
+
+			strappend(&res, buf);
+
+			free(buf);
 			break;
 		}
 	}

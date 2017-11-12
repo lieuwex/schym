@@ -1,6 +1,15 @@
-#include "../ast.h"
+#pragma once
+
 #include "./interpreter.h"
 #include "./varmap.h"
+#include "../ast.h"
+
+typedef struct RunResult {
+	// If err != NULL, node will be NULL.
+	// Not-NULL values need to be freed.
+	Node *node;
+	char *err;
+} RunResult;
 
 typedef struct InterEnv {
 	VarMap *variables;

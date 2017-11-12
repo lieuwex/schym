@@ -4,6 +4,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct RunResult;
+typedef struct RunResult RunResult;
+struct InterEnv;
+typedef struct InterEnv InterEnv;
+
 typedef enum ASTtype {
 	AST_QUOTED,
 	AST_EXPR,
@@ -11,6 +16,8 @@ typedef enum ASTtype {
 	AST_STR,
 	AST_NUM,
 	AST_COMMENT,
+
+	AST_FUN, // not a real AST node, actually.
 } ASTtype;
 
 typedef struct Node Node;
@@ -42,6 +49,15 @@ typedef struct Comment {
 	char *content;
 } Comment;
 
+typedef struct Function {
+	bool isBuiltin;
+	Expression args; // not used when isBuiltin==true
+	union {
+		Node *body;
+		RunResult (*fn)(InterEnv*, const char*, size_t, const Node**);
+	};
+} Function;
+
 struct Node {
 	ASTtype type;
 	union {
@@ -51,6 +67,7 @@ struct Node {
 		String str;
 		Number num;
 		Comment comment;
+		Function function;
 	};
 };
 

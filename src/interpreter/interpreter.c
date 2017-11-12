@@ -93,53 +93,45 @@ double getNumVal(InterEnv *env, const Node *node) {
 	}
 }
 
+static RunResult runFunction(InterEnv *env, const Function *fn, const char *name, const Node **args, size_t nargs) {
+	if (fn->isBuiltin) {
+		return fn->fn(env, name, nargs, args);
+	}
+
+	size_t fn_nargs = fn->args.len;
+
+	for (size_t i = 0; i < fn_nargs; i++) {
+		assert(i < nargs);
+		RunResult rr = run(env, args[i]);
+		if (rr.err != NULL) {
+			goto exit;
+		}
+		varmap_setItem(env->variables, fn->args.nodes[i]->var.name, node_copy(rr.node));
+	}
+
+	RunResult rr = run(env, fn->body);
+	if (rr.err != NULL) {
+		goto exit;
+	}
+
+exit:
+	for (size_t i = 0; i < fn_nargs; i++) {
+		varmap_removeItem(env->variables, fn->args.nodes[i]->var.name);
+	}
+
+	rr.node = node_copy(rr.node); // REVIEW
+	return rr;
+}
+
 static RunResult funcCall(InterEnv *env, const char *name, const Node **args, size_t nargs) {
 	const Builtin *builtin = getBuiltin(name);
 	if (builtin != NULL) {
-		return builtin->fn(env, name, nargs, args);
+		return runFunction(env, &builtin->function, name, args, nargs);
 	}
 
 	Node *node = varmap_getItem(env->variables, name);
-	if (
-		node->type == AST_QUOTED &&
-		node->quoted.node->type == AST_EXPR &&
-		streq(node->quoted.node->expr.nodes[0]->var.name, "fn")
-	) {
-		Node *fn_args_expr = node->quoted.node->expr.nodes[1];
-
-		size_t fn_nargs = fn_args_expr->expr.len;
-		Node **fn_args = fn_args_expr->expr.nodes;
-		char **fn_arg_names = malloc(fn_nargs, sizeof(char*));
-		for (size_t i = 0; i < fn_nargs; i++) {
-			fn_arg_names[i] = fn_args[i]->var.name;
-		}
-
-		for (size_t i = 0; i < fn_nargs; i++) {
-			assert(i < nargs);
-			RunResult rr = run(env, args[i]);
-			if (rr.err != NULL) {
-				goto exit;
-			}
-			varmap_setItem(env->variables, fn_arg_names[i], rr.node);
-		}
-
-		size_t nexpressions = node->quoted.node->expr.len - 2;
-		Node **expressions = node->quoted.node->expr.nodes + 2;
-
-		RunResult rr;
-		for (size_t i = 0; i < nexpressions; i++) {
-			rr = run(env, expressions[i]);
-			if (rr.err != NULL) {
-				goto exit;
-			}
-		}
-
-exit:
-		for (size_t i = 0; i < fn_nargs; i++) {
-			varmap_removeItem(env->variables, fn_arg_names[i]);
-		}
-
-		return rr;
+	if (node->type == AST_FUN) {
+		return runFunction(env, &node->function, name, args, nargs);
 	}
 
 	return rr_errf("no function '%s' found", name);

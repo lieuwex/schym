@@ -1,6 +1,8 @@
+#include "../ast.h"
+
 typedef struct Builtin {
 	const char *name;
-	RunResult (*fn)(InterEnv *env, const char *name, size_t nargs, const Node **args);
+	Function function;
 	bool enabled;
 } Builtin;
 

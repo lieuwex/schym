@@ -35,10 +35,8 @@ RunResult builtin_print(InterEnv *env, const char *name, size_t nargs, const Nod
 		if (rr.err != NULL) {
 			return rr;
 		}
-		arg = rr.node;
 
-		char *str = toString(arg);
-		node_free(rr.node);
+		char *str = toString(rr.node);
 		printf("%s", str);
 		free(str);
 	}
@@ -224,6 +222,13 @@ Node *mkQuotedExpr(size_t len) {
 	return res;
 }
 
+Node *makeVar(const char *name) {
+	Node *res = malloc(1, sizeof(Node));
+	res->type = AST_VAR;
+	res->var.name = astrcpy(name);
+	return res;
+}
+
 RunResult builtin_fun(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)env;
 	(void)name;
@@ -231,105 +236,70 @@ RunResult builtin_fun(InterEnv *env, const char *name, size_t nargs, const Node 
 	EXPECT(>= 2);
 	EXPECT_TYPE(0, AST_EXPR);
 
-	Node **fn_args = args[0]->expr.nodes;
+	Node *node = malloc(1, sizeof(Node));
+	node->type = AST_FUN;
+	node->function.isBuiltin = false;
+
 	size_t fn_nargs = args[0]->expr.len;
-	char **fn_arg_names = malloc(fn_nargs, sizeof(char*));
+	node->function.args.len = fn_nargs;
+	node->function.args.nodes = malloc(fn_nargs, sizeof(Node*));
 	for (size_t i = 0; i < fn_nargs; i++) {
-		fn_arg_names[i] = fn_args[i]->var.name;
+		node->function.args.nodes[i] = node_copy(args[0]->expr.nodes[i]);
 	}
 
-	// REVIEW????
-
-	// '(fn (a b c) ...)
-
-	Node *argsNode = malloc(1, sizeof(Node));
-	argsNode->type = AST_EXPR;
-	argsNode->expr.len = fn_nargs;
-	argsNode->expr.nodes = malloc(fn_nargs, sizeof(Node*));
-	for (size_t i = 0; i < fn_nargs; i++) {
-		argsNode->expr.nodes[i] = node_copy(args[0]->expr.nodes[i]);
-	}
-
-	Node *toStore = mkQuotedExpr(nargs + 1);
-
-	toStore->quoted.node->expr.nodes[0] = malloc(1, sizeof(Node));
-	toStore->quoted.node->expr.nodes[0]->type = AST_VAR;
-	toStore->quoted.node->expr.nodes[0]->var.name = astrcpy("fn");
-
-	toStore->quoted.node->expr.nodes[1] = argsNode;
+	Node *body = malloc(1, sizeof(Node));
+	body->type = AST_EXPR;
+	body->expr.len = nargs;
+	body->expr.nodes = malloc(nargs, sizeof(Node*));
+	body->expr.nodes[0] = makeVar("do");
 	for (size_t i = 1; i < nargs; i++) {
-		toStore->quoted.node->expr.nodes[i+1] = node_copy(args[i]);
+		body->expr.nodes[i] = node_copy(args[i]);
 	}
+	node->function.body = body;
 
-	return rr_node(toStore);
+	return rr_node(node);
+}
+
+static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const char*, size_t, const Node**)) {
+	Builtin res;
+
+	res.name = name;
+	res.enabled = true;
+
+	res.function.isBuiltin = true;
+	res.function.fn = fn;
+	res.function.args.len = 0;
+
+	return res;
 }
 
 #define STATIC_BUILTIN_COUNT 15
-Builtin staticbuiltins[STATIC_BUILTIN_COUNT] = {
-	{
-		.name = "print",
-		.enabled = true,
-		.fn = builtin_print,
-	}, {
-		.name = "+",
-		.enabled = true,
-		.fn = builtin_arith,
-	}, {
-		.name = "-",
-		.enabled = true,
-		.fn = builtin_arith,
-	}, {
-		.name = "/",
-		.enabled = true,
-		.fn = builtin_arith,
-	}, {
-		.name = "*",
-		.enabled = true,
-		.fn = builtin_arith,
-	}, {
-		.name = "eq",
-		.enabled = true,
-		.fn = builtin_comp,
-	}, {
-		.name = "neq",
-		.enabled = true,
-		.fn = builtin_comp,
-	}, {
-		.name = "lt",
-		.enabled = true,
-		.fn = builtin_comp,
-	}, {
-		.name = "gt",
-		.enabled = true,
-		.fn = builtin_comp,
-	}, {
-		.name = "do",
-		.enabled = true,
-		.fn = builtin_do,
-	}, {
-		.name = "if",
-		.enabled = true,
-		.fn = builtin_if,
-	}, {
-		.name = "set",
-		.enabled = true,
-		.fn = builtin_set,
-	}, {
-		.name = "let",
-		.enabled = true,
-		.fn = builtin_let,
-	}, {
-		.name = "streq",
-		.enabled = true,
-		.fn = builtin_streq,
-	}, {
-		.name = "fun",
-		.enabled = true,
-		.fn = builtin_fun,
-	}
-};
+static bool setup = false;
+Builtin staticbuiltins[STATIC_BUILTIN_COUNT];
+
+void setBuiltins(void) {
+	staticbuiltins[ 0] = makeBuiltin("print", builtin_print);
+	staticbuiltins[ 1] = makeBuiltin("+", builtin_arith);
+	staticbuiltins[ 2] = makeBuiltin("-", builtin_arith);
+	staticbuiltins[ 3] = makeBuiltin("/", builtin_arith);
+	staticbuiltins[ 4] = makeBuiltin("*", builtin_arith);
+	staticbuiltins[ 5] = makeBuiltin("eq", builtin_comp);
+	staticbuiltins[ 6] = makeBuiltin("neq", builtin_comp);
+	staticbuiltins[ 7] = makeBuiltin("lt", builtin_comp);
+	staticbuiltins[ 8] = makeBuiltin("gt", builtin_comp);
+	staticbuiltins[ 9] = makeBuiltin("do", builtin_do);
+	staticbuiltins[10] = makeBuiltin("if", builtin_if);
+	staticbuiltins[11] = makeBuiltin("set", builtin_set);
+	staticbuiltins[12] = makeBuiltin("let", builtin_let);
+	staticbuiltins[13] = makeBuiltin("streq", builtin_streq);
+	staticbuiltins[14] = makeBuiltin("fun", builtin_fun);
+}
 
 Builtin *getBuiltin(const char *name) {
+	if (!setup) {
+		setBuiltins(); // HACK
+	}
+
 	for (size_t i = 0; i < STATIC_BUILTIN_COUNT; i++) {
 		Builtin builtin = staticbuiltins[i];
 		if (streq(name, builtin.name)) {
