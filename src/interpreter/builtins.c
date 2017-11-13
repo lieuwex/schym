@@ -10,7 +10,7 @@
 // TODO: better way for range
 #define EXPECT(cond) do { \
 	if (!(nargs cond)) { \
-		return rr_errf("expected nargs (%d) to be %s", nargs, #cond); \
+		return rr_errf("expected number of args to %s but is %d", #cond, nargs); \
 	} \
 } while(0)
 
