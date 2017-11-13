@@ -18,6 +18,8 @@ char *typetostr(const Node *node) {
 	case AST_NUM: return "number";
 	case AST_COMMENT: return "comment";
 	case AST_FUN: return "function";
+
+	default: return "UNKNOWN";
 	}
 }
 
@@ -90,7 +92,7 @@ char *stringify(const Node *node,int lvl) {
 			if (node->function.isBuiltin) {
 				strappend(&res, "[ builtin function ]");
 			} else {
-				Expression *args = &node->function.args;
+				const Expression *args = &node->function.args;
 				Node *body = node->function.body;
 
 				strappend(&res, "(fun ");

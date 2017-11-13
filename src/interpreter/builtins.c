@@ -248,12 +248,13 @@ RunResult builtin_fun(InterEnv *env, const char *name, size_t nargs, const Node 
 	node->function.args.len = fn_nargs;
 	node->function.args.nodes = malloc(fn_nargs, sizeof(Node*));
 	for (size_t i = 0; i < fn_nargs; i++) {
+		assert(args[0]->expr.nodes[i]->type == AST_VAR); // TODO
 		node->function.args.nodes[i] = node_copy(args[0]->expr.nodes[i]);
 	}
 
 	Node *body = malloc(1, sizeof(Node));
 	body->type = AST_EXPR;
-	body->expr.len = nargs;
+	body->expr.len = nargs; // we have +1 for the 'do'
 	body->expr.nodes = malloc(nargs, sizeof(Node*));
 	body->expr.nodes[0] = makeVar("do");
 	for (size_t i = 1; i < nargs; i++) {
