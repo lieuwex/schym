@@ -87,21 +87,24 @@ char *stringify(const Node *node,int lvl) {
 		}
 
 		case AST_FUN: {
-			size_t nargs = node->function.args.len;
-			char *buf;
+			if (node->function.isBuiltin) {
+				strappend(&res, "[ builtin function ]");
+			} else {
+				Expression *args = &node->function.args;
+				Node *body = node->function.body;
 
-			asprintf(
-				&buf,
-				"[%s function with %ld argument%s ]",
-				node->function.isBuiltin ? " builtin" : "",
-				nargs,
-				nargs == 1 ? "" : "s"
-			);
-			assert(buf);
+				strappend(&res, "(fun ");
 
-			strappend(&res, buf);
+				Node *node = malloc(1, sizeof(Node));
+				node->type = AST_EXPR;
+				node->expr = *args;
+				strappend(&res, stringify(node, lvl+1));
+				strappend(&res, " ");
+				free(node);
 
-			free(buf);
+				strappend(&res, stringify(body, lvl+1));
+				strappend(&res, ")");
+			}
 			break;
 		}
 	}
