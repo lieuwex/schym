@@ -130,7 +130,7 @@ static RunResult funcCall(InterEnv *env, const char *name, const Node **args, si
 	}
 
 	Node *node = varmap_getItem(env->variables, name);
-	if (node->type == AST_FUN) {
+	if (node != NULL && node->type == AST_FUN) {
 		return runFunction(env, &node->function, name, args, nargs);
 	}
 
