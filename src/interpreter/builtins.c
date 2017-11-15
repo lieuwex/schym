@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdarg.h>
+#include <strings.h>
 #include "../ast.h"
 #include "internal.h"
 #include "../stringify.h"
@@ -20,30 +21,48 @@
 	} \
 } while(0)
 
+static char *nodesToStrings(InterEnv *env, size_t nargs, const Node **args, char **output) {
+	for (size_t i = 0; i < nargs; i++) {
+		const Node *node = args[i];
+		assert(node);
+
+		RunResult rr = run(env, node);
+		if (rr.err != NULL) {
+			return rr.err;
+		}
+
+		output[i] = toString(rr.node);
+	}
+
+	return NULL;
+}
+
 RunResult builtin_print(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 	EXPECT(>= 1);
 
-	for (size_t i = 0; i < nargs; i++) {
-		if (i != 0) {
-			putchar(' ');
+	RunResult res;
+	char **strings = malloc(nargs, sizeof(char*));
+	char *err = nodesToStrings(env, nargs, args, strings);
+
+	if (err != NULL) {
+		res = rr_errf(err);
+	} else {
+		for (size_t i = 0; i < nargs; i++) {
+			if (i != 0) {
+				putchar(' ');
+			}
+
+			printf("%s", strings[i]);
+			free(strings[i]);
 		}
 
-		const Node *arg = args[i];
-		assert(arg);
-
-		RunResult rr = run(env, arg);
-		if (rr.err != NULL) {
-			return rr;
-		}
-
-		char *str = toString(rr.node);
-		printf("%s", str);
-		free(str);
+		putchar('\n'); // REVIEW: do we want to do this?
+		res = rr_null();
 	}
 
-	putchar('\n'); // REVIEW: do we want to do this?
-	return rr_null();
+	free(strings);
+	return res;
 }
 
 RunResult builtin_arith(InterEnv *env, const char *name, size_t nargs, const Node **args) {
@@ -265,6 +284,35 @@ RunResult builtin_fun(InterEnv *env, const char *name, size_t nargs, const Node 
 	return rr_node(node);
 }
 
+RunResult builtin_concat(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	RunResult res;
+	char **strings = malloc(nargs, sizeof(char*));
+	char *err = nodesToStrings(env, nargs, args, strings);
+
+	if (err != NULL) {
+		res = rr_errf(err);
+	} else {
+		char *buf = emptystr();
+
+		for (size_t i = 0; i < nargs; i++) {
+			strappend(&buf, strings[i]);
+			free(strings[i]);
+		}
+
+		Node *node = malloc(1, sizeof(Node));
+		node->type = AST_STR;
+		node->str.size = strlen(buf);
+		node->str.str = buf;
+
+		res = rr_node(node);
+	}
+
+	free(strings);
+	return res;
+}
+
 static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const char*, size_t, const Node**)) {
 	Builtin res;
 
@@ -277,7 +325,7 @@ static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const ch
 	return res;
 }
 
-#define STATIC_BUILTIN_COUNT 16
+#define STATIC_BUILTIN_COUNT 17
 static bool setup = false;
 Builtin staticbuiltins[STATIC_BUILTIN_COUNT];
 
@@ -298,6 +346,7 @@ void setBuiltins(void) {
 	staticbuiltins[13] = makeBuiltin("let", builtin_let);
 	staticbuiltins[14] = makeBuiltin("streq", builtin_streq);
 	staticbuiltins[15] = makeBuiltin("fun", builtin_fun);
+	staticbuiltins[16] = makeBuiltin("concat", builtin_concat);
 }
 
 Builtin *getBuiltin(const char *name) {

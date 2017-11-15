@@ -25,3 +25,10 @@ char *astrcpy(const char *src) {
 	memcpy(buf, src, len + 1);
 	return buf;
 }
+
+char *emptystr(void) {
+	char *res = malloc(1, sizeof(char));
+	assert(res);
+	res[0] = '\0';
+	return res;
+}
