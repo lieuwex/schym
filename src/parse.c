@@ -238,8 +238,8 @@ static ParseResult parsequoted(const char **codep) {
 
 static inline bool isvarchar(const char c) {
 	return !isspace(c) &&
-		c != '(' && c != ')' &&
-		c != '[' && c != ']';
+		   c != '(' && c != ')' &&
+		   c != '[' && c != ']';
 }
 static ParseResult parsevariable(const char **codep) {
 	const char *code = *codep;

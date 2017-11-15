@@ -48,8 +48,8 @@ void varmap_removeItem(VarMap *map, const char *key) {
 		if (streq(map->keys[i], key)) break;
 	}
 	if (i == map->nkeys) {
-		 // key doesn't exist
-		 return;
+		// key doesn't exist
+		return;
 	}
 	free(map->keys[i]);
 	memmove(

@@ -9,7 +9,7 @@
 #include "intern.h"
 #include "util.h"
 
-char* readfile(const char *fname){
+char *readfile(const char *fname) {
 	FILE *f = fopen(fname, "rb");
 	if (f == NULL) {
 		return NULL;
@@ -39,7 +39,7 @@ char* readfile(const char *fname){
 		return NULL;
 	}
 
-	if (memchr(buf,'\0',flen) != NULL) {
+	if (memchr(buf, '\0', flen) != NULL) {
 		fprintf(stderr, "Invalid null char in file '%s'\n", fname);
 		exit(1);
 	}
