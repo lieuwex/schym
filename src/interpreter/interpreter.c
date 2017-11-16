@@ -122,20 +122,6 @@ exit:
 	return rr;
 }
 
-static RunResult funcCall(InterEnv *env, const char *name, const Node **args, size_t nargs) {
-	const Builtin *builtin = getBuiltin(name);
-	if (builtin != NULL) {
-		return runFunction(env, &builtin->function, name, args, nargs);
-	}
-
-	Node *node = varmap_getItem(env->variables, name);
-	if (node != NULL && node->type == AST_FUN) {
-		return runFunction(env, &node->function, name, args, nargs);
-	}
-
-	return rr_errf("no function '%s' found", name);
-}
-
 RunResult run(InterEnv *env, const Node *node) {
 	assert(env);
 	assert(node);
@@ -151,17 +137,33 @@ RunResult run(InterEnv *env, const Node *node) {
 	case AST_EXPR: {
 		if (node->expr.len == 0) {
 			return rr_errf("Non-quoted expression can't be empty");
-		} else if (node->expr.nodes[0]->type != AST_VAR) {
+		}
+
+		RunResult rr = run(env, node->expr.nodes[0]);
+		if (rr.err != NULL) {
+			return rr;
+		}
+
+		if (rr.node == NULL) {
+			return rr_errf("cannot call nil value");
+		} else if (rr.node->type != AST_FUN) {
 			return rr_errf(
-				"Cannot call non-variable (type %s)",
+				"Cannot call non-function (type %s)",
 				typetostr(node->expr.nodes[0])
 			);
 		}
 
+		// REVIEW
+		assert(
+			!rr.node->function.isBuiltin ||
+			node->expr.nodes[0]->type == AST_VAR
+		);
+
 		const Node **args = (const Node**)node->expr.nodes + 1;
-		return funcCall(
+		return runFunction(
 			env,
-			node->expr.nodes[0]->var.name,
+			&rr.node->function,
+			node->var.name,
 			args,
 			node->expr.len - 1
 		);
@@ -169,11 +171,20 @@ RunResult run(InterEnv *env, const Node *node) {
 
 	case AST_VAR: {
 		const Node *val = varmap_getItem(env->variables, node->var.name);
-		if (val == NULL) {
-			return rr_null();
-		} else {
+		if (val != NULL) {
 			return rr_node(node_copy(val));
 		}
+
+		Builtin *builtin = getBuiltin(node->var.name);
+		if (builtin != NULL) {
+			// REVIEW
+			Node *node = malloc(1, sizeof(Node));
+			node->type = AST_FUN;
+			node->function = builtin->function;
+			return rr_node(node);
+		}
+
+		return rr_null();
 	}
 
 	case AST_COMMENT:
