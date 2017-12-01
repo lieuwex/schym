@@ -66,44 +66,48 @@ RunResult builtin_print(InterEnv *env, const char *name, size_t nargs, const Nod
 }
 
 RunResult builtin_arith(InterEnv *env, const char *name, size_t nargs, const Node **args) {
-	EXPECT(== 2);
+#define CHECKNUM(node) do { \
+	if (node == NULL || node->type != AST_NUM) { \
+		return rr_errf("all arguments should be a number"); \
+	} \
+} while(0);
+
+	EXPECT(>= 2);
 
 	Node *res = malloc(1, sizeof(Node));
 	res->type = AST_NUM;
 
-	RunResult rr1 = run(env, args[0]);
-	RunResult rr2 = run(env, args[1]);
+	RunResult rr = run(env, args[0]);
+	CHECKNUM(rr.node);
+	res->num.val = rr.node->num.val;
 
-	if (
-		(rr1.node->type != AST_NUM) ||
-		(rr2.node->type != AST_NUM)
-	) {
-		return rr_errf("both arguments should be a number");
-	}
+	for (size_t i = 1; i < nargs; i++) {
+		const RunResult rr = run(env, args[i]);
+		CHECKNUM(rr.node);
+		const double n = rr.node->num.val;
 
-	double n1 = rr1.node->num.val;
-	double n2 = rr2.node->num.val;
-
-	const char symbol = name[0];
-	switch (symbol) {
-	case '+':
-		res->num.val = n1 + n2;
-		break;
-	case '-':
-		res->num.val = n1 - n2;
-		break;
-	case '/':
-		res->num.val = n1 / n2;
-		break;
-	case '*':
-		res->num.val = n1 * n2;
-		break;
-	case '^':
-		res->num.val = pow(n1, n2);
-		break;
+		switch (name[0]) {
+		case '+':
+			res->num.val += n;
+			break;
+		case '-':
+			res->num.val -= n;
+			break;
+		case '/':
+			res->num.val /= n;
+			break;
+		case '*':
+			res->num.val *= n;
+			break;
+		case '^':
+			res->num.val = pow(res->num.val, n);
+			break;
+		}
 	}
 
 	return rr_node(res);
+
+#undef CHECKNUM
 }
 
 RunResult builtin_comp(InterEnv *env, const char *name, size_t nargs, const Node **args) {
