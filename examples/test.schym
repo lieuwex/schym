@@ -1,0 +1,23 @@
+(set gx1 -1)
+(set gen
+	(fun (x) (do
+		(set gx1 x)
+		(fun (y)
+			(do
+				(set gx x)
+				(set gy y)
+				(+ x y))))))
+
+(set f (gen 10))
+(print gx1)  
+(set g (gen 20))
+(print gx1)  
+(print (f 1))  
+(print gx gy)  
+(print (g 2))  
+(print gx gy)  
+
+(set h ((fun (gx1) (gen 40)) 30))
+(print gx1)  
+(print (h 4))  
+(print gx gy)  

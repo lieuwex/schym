@@ -1,0 +1,3 @@
+(set x "(print \"kaas\")")
+(print x)
+(eval x)

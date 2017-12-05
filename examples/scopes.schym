@@ -1,0 +1,14 @@
+(print "global x is set to 10")
+(set x 10)
+(set header (str)
+	 (print "")
+	 (print "---" str))
+
+(header "testing function scopes")
+(set fn (x) (set x 5) (print "fn" x))
+(fn 5)
+(print "after fn" x)
+
+(header "testing let scopes")
+(let x 5 (print "let" x))
+(print "after let" x)

@@ -1,0 +1,6 @@
+(set twopow (a) (^ 2 a))
+
+(print twopow)
+
+(print
+	2 6 (twopow 6))
