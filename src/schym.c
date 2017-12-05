@@ -96,17 +96,23 @@ int main(int argc, char **argv) {
 
 	free(src);
 
-	InternEnvironment *env = ie_make();
-	InternedNode interned = intern(program.nodes[0], env);
-	ie_free(env, false);
-
 	InterEnv *is = in_make();
-	RunResult res = in_run(is, interned);
-	//in_destroy(is);
-	if (res.err != NULL) {
-		fprintf(stderr, "Error while executing code: %s\n", res.err);
-		return 1;
+	InternEnvironment *env = ie_make(); // TODO: free
+	for (size_t i = 0; i < program.len; i++) {
+		if (program.nodes[i]->type != AST_EXPR) {
+			continue;
+		}
+
+		InternedNode interned = intern(program.nodes[i], env);
+		RunResult res = in_run(is, interned);
+		node_free(interned.node);
+		//in_destroy(is);
+		if (res.err != NULL) {
+			fprintf(stderr, "Error while executing code: %s\n", res.err);
+			return 1;
+		}
 	}
+	ie_free(env, false);
 
 	return 0;
 }
