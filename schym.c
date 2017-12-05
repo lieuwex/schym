@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ast.h"
-#include "stringify.h"
-#include "interpreter/interpreter.h"
-#include "intern.h"
-#include "util.h"
+#include "src/ast.h"
+#include "src/stringify.h"
+#include "src/interpreter/interpreter.h"
+#include "src/intern.h"
+#include "src/util.h"
 
 char *readfile(const char *fname) {
 	FILE *f = fopen(fname, "rb");
