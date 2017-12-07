@@ -11,3 +11,4 @@ typedef struct BuiltinList BuiltinList;
 
 Builtin *getBuiltin(const char *name);
 void addBuiltin(const char *name, BuiltinFn fn);
+void enableBuiltin(const char *name, bool enable);

@@ -498,20 +498,6 @@ Builtin *getBuiltin(const char *name) {
 	return NULL;
 }
 
-/*
-void in_enable_builtin(const char *builtin, bool val) {
-	if (builtin == NULL) {
-		for (size_t i = 0; i < BUILTIN_COUNT; i++) {
-			Builtin b = builtins[i];
-			in_enable_builtin(b.name, val);
-		}
-	}
-
-	for (size_t i = 0; i < BUILTIN_COUNT; i++) {
-		Builtin b = builtins[i];
-		if (streq(b.name, builtin)) {
-			b.enabled = val;
-		}
-	}
+void enableBuiltin(const char *name, bool enable) {
+	getBuiltin(name)->enabled = enable;
 }
-*/
