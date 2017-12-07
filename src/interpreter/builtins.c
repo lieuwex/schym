@@ -489,9 +489,9 @@ Builtin *getBuiltin(const char *name) {
 	}
 
 	for (size_t i = 0; i < builtins.len; i++) {
-		Builtin builtin = builtins.items[i];
-		if (streq(name, builtin.name)) {
-			return &builtins.items[i];
+		Builtin *builtin = builtins.items + i;
+		if (builtin->enabled && streq(name, builtin->name)) {
+			return builtin;
 		}
 	}
 
