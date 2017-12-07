@@ -58,6 +58,7 @@ typedef struct Function {
 		struct {
 			Expression args;
 			Node *body;
+			InterEnv *env;
 		};
 	};
 } Function;

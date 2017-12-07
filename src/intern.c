@@ -58,7 +58,7 @@ void ie_free(InternEnvironment *env, bool freeValues) {
 	free(env);
 }
 
-static InternedNode _intern(const Node *node, Map *map) {
+InternedNode intern(const Node *node, InternEnvironment *env) {
 	Node *copy = node_copy(node);
 
 	if (
@@ -66,16 +66,16 @@ static InternedNode _intern(const Node *node, Map *map) {
 		copy->quoted.node->type == AST_VAR
 	) {
 		const char *name = copy->quoted.node->var.name;
-		char *val = map_getItem(map, name);
+		char *val = map_getItem(env->map, name);
 		if (val == NULL) {
-			val = map_addItem(map, name, name);
+			val = map_addItem(env->map, name, name);
 		}
 		copy->quoted.node->var.name = val;
 	} else if (copy->type == AST_QUOTED) {
-		copy->quoted.node = _intern(node->quoted.node, map).node;
+		copy->quoted.node = intern(node->quoted.node, env).node;
 	} else if (copy->type == AST_EXPR) {
 		for (size_t i = 0; i < copy->expr.len; i++) {
-			copy->expr.nodes[i] = _intern(node->expr.nodes[i], map).node;
+			copy->expr.nodes[i] = intern(node->expr.nodes[i], env).node;
 		}
 	}
 
@@ -84,8 +84,8 @@ static InternedNode _intern(const Node *node, Map *map) {
 	return res;
 }
 
-InternedNode intern(const Node *node, InternEnvironment *env) {
-	Map *map = env->map;
-	InternedNode res = _intern(node, map);
+InternedNode skipIntern(const Node *node) {
+	InternedNode res;
+	res.node = node_copy(node);
 	return res;
 }

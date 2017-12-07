@@ -12,12 +12,24 @@
 
 // TODO: some way to handle builtins
 
-InterEnv *in_make(void) {
+InterEnv *in_make() {
 	InterEnv *in = malloc(1, sizeof(InterEnv));
 	assert(in);
 	in->variables = varmap_make();
+	in->parent = NULL;
 	assert(in->variables);
 	return in;
+}
+
+InterEnv *in_copy(const InterEnv *env) {
+	InterEnv *res = in_make();
+
+	res->parent = env->parent;
+
+	varmap_free(res->variables);
+	res->variables = varmap_copy(env->variables);
+
+	return res;
 }
 
 void in_destroy(InterEnv *is) {
@@ -50,6 +62,23 @@ RunResult rr_errf(const char *format, ...) {
 		.node = NULL,
 		.err = buf,
 	};
+	return res;
+}
+
+RunResult rr_errfloc(Location loc, const char *format, ...) {
+	// TODO: would be nice to know the location in the file where the error
+	// occured.
+
+	va_list ap;
+	va_start(ap, format);
+	RunResult res = rr_errf(format, ap);
+	va_end(ap);
+
+	char *cpy = astrcpy(res.err);
+	free(res.err);
+	asprintf(&res.err, "at line %d col %d: %s", loc.line, loc.col, cpy);
+	free(cpy);
+
 	return res;
 }
 
@@ -99,27 +128,39 @@ static RunResult runFunction(InterEnv *env, const Function *fn, const char *name
 
 	size_t fn_nargs = fn->args.len;
 
+	EXPECT(==, fn_nargs);
+
 	for (size_t i = 0; i < fn_nargs; i++) {
 		assert(i < nargs);
 		RunResult rr = run(env, args[i]);
 		if (rr.err != NULL) {
-			goto exit;
+			return rr;
 		}
 		varmap_setItem(env->variables, fn->args.nodes[i]->var.name, node_copy(rr.node));
 	}
 
 	RunResult rr = run(env, fn->body);
 	if (rr.err != NULL) {
-		goto exit;
-	}
-
-exit:
-	for (size_t i = 0; i < fn_nargs; i++) {
-		varmap_removeItem(env->variables, fn->args.nodes[i]->var.name);
+		return rr;
 	}
 
 	rr.node = node_copy(rr.node); // REVIEW
 	return rr;
+}
+
+Node *getVar(const InterEnv *env, const char *name) {
+	Node *res = NULL;
+
+	while (res == NULL && env != NULL) {
+		res = varmap_getItem(env->variables, name);
+		if (res != NULL) {
+			break;
+		}
+
+		env = env->parent;
+	}
+
+	return res;
 }
 
 RunResult run(InterEnv *env, const Node *node) {
@@ -160,17 +201,32 @@ RunResult run(InterEnv *env, const Node *node) {
 		);
 
 		const Node **args = (const Node**)node->expr.nodes + 1;
-		return runFunction(
-			env,
+
+		InterEnv *envToUse = env;
+		InterEnv *oldParent = NULL;
+		if (!rr.node->function.isBuiltin) {
+			envToUse = rr.node->function.env;
+			oldParent = envToUse->parent;
+			envToUse->parent = env;
+		}
+
+		RunResult res = runFunction(
+			rr.node->function.isBuiltin ?
+				env :
+				rr.node->function.env,
 			&rr.node->function,
-			node->var.name,
+			node->expr.nodes[0]->var.name,
 			args,
 			node->expr.len - 1
 		);
+		if (!rr.node->function.isBuiltin) {
+			envToUse->parent = oldParent;
+		}
+		return res;
 	}
 
 	case AST_VAR: {
-		const Node *val = varmap_getItem(env->variables, node->var.name);
+		const Node *val = getVar(env, node->var.name);
 		if (val != NULL) {
 			return rr_node(node_copy(val));
 		}

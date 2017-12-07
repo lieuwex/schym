@@ -12,4 +12,5 @@ typedef struct InternEnvironment InternEnvironment;
 InternEnvironment *ie_make(void);
 void ie_free(InternEnvironment*, bool);
 
-InternedNode intern(const Node *node, InternEnvironment*);
+InternedNode intern(const Node*, InternEnvironment*);
+InternedNode skipIntern(const Node*);

@@ -8,13 +8,6 @@
 #include "../util.h"
 #include "./builtins.h"
 
-// TODO: better way for range
-#define EXPECT(cond) do { \
-	if (!(nargs cond)) { \
-		return rr_errf("expected number of args to %s but is %d", #cond, nargs); \
-	} \
-} while(0)
-
 #define EXPECT_TYPE(narg, typ) do { \
 	if (args[(narg)]->type != (typ)) { \
 		return rr_errf("expected argument %d to be of type %s", narg, #typ); \
@@ -37,9 +30,15 @@ static char *nodesToStrings(InterEnv *env, size_t nargs, const Node **args, char
 	return NULL;
 }
 
+static InterEnv *createScope(InterEnv *parent) {
+	InterEnv *res = in_make();
+	res->parent = parent;
+	return res;
+}
+
 RunResult builtin_print(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
-	EXPECT(>= 1);
+	EXPECT(>=, 1);
 
 	RunResult res;
 	char **strings = malloc(nargs, sizeof(char*));
@@ -68,11 +67,12 @@ RunResult builtin_print(InterEnv *env, const char *name, size_t nargs, const Nod
 RunResult builtin_arith(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 #define CHECKNUM(node) do { \
 	if (node == NULL || node->type != AST_NUM) { \
+		__asm("int3"); \
 		return rr_errf("all arguments should be a number"); \
 	} \
 } while(0);
 
-	EXPECT(>= 2);
+	EXPECT(>=, 2);
 
 	Node *res = malloc(1, sizeof(Node));
 	res->type = AST_NUM;
@@ -111,7 +111,7 @@ RunResult builtin_arith(InterEnv *env, const char *name, size_t nargs, const Nod
 }
 
 RunResult builtin_comp(InterEnv *env, const char *name, size_t nargs, const Node **args) {
-	EXPECT(== 2);
+	EXPECT(==, 2);
 
 	Node *res = malloc(1, sizeof(Node));
 	res->type = AST_NUM;
@@ -119,14 +119,18 @@ RunResult builtin_comp(InterEnv *env, const char *name, size_t nargs, const Node
 	double n1 = getNumVal(env, args[0]);
 	double n2 = getNumVal(env, args[1]);
 
-	if (streq(name, "eq")) {
+	if (streq(name, "==")) {
 		res->num.val = n1 == n2;
-	} else if (streq(name, "neq")) {
+	} else if (streq(name, "!=")) {
 		res->num.val = n1 != n2;
-	} else if (streq(name, "lt")) {
+	} else if (streq(name, "<")) {
 		res->num.val = n1 < n2;
-	} else if (streq(name, "gt")) {
+	} else if (streq(name, ">")) {
 		res->num.val = n1 > n2;
+	} else if (streq(name, "<=")) {
+		res->num.val = n1 <= n2;
+	} else if (streq(name, ">=")) {
+		res->num.val = n1 >= n2;
 	}
 
 	return rr_node(res);
@@ -135,7 +139,7 @@ RunResult builtin_comp(InterEnv *env, const char *name, size_t nargs, const Node
 RunResult builtin_do(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
-	EXPECT(>= 1);
+	EXPECT(>=, 1);
 
 	RunResult rr;
 	for (size_t i = 0; i < nargs; i++) {
@@ -151,8 +155,8 @@ RunResult builtin_do(InterEnv *env, const char *name, size_t nargs, const Node *
 RunResult builtin_if(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
-	EXPECT(>= 2);
-	EXPECT(<= 3);
+	EXPECT(>=, 2);
+	EXPECT(<=, 3);
 
 	RunResult cond_rr = run(env, args[0]);
 	if (cond_rr.err != NULL) {
@@ -170,15 +174,69 @@ RunResult builtin_if(InterEnv *env, const char *name, size_t nargs, const Node *
 	return rr_null();
 }
 
+Node *makeVar(const char *name) {
+	Node *res = malloc(1, sizeof(Node));
+	res->type = AST_VAR;
+	res->var.name = astrcpy(name);
+	return res;
+}
+
+RunResult builtin_fun(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)env;
+	(void)name;
+
+	EXPECT(>=, 2);
+	EXPECT_TYPE(0, AST_EXPR);
+
+	Node *node = malloc(1, sizeof(Node));
+	node->type = AST_FUN;
+	node->function.isBuiltin = false;
+	node->function.env = createScope(env);
+
+	size_t fn_nargs = args[0]->expr.len;
+	node->function.args.len = fn_nargs;
+	node->function.args.nodes = malloc(fn_nargs, sizeof(Node*));
+	for (size_t i = 0; i < fn_nargs; i++) {
+		assert(args[0]->expr.nodes[i]->type == AST_VAR); // TODO
+		node->function.args.nodes[i] = node_copy(args[0]->expr.nodes[i]);
+	}
+
+	Node *body = malloc(1, sizeof(Node));
+	body->type = AST_EXPR;
+	body->expr.len = nargs; // we have +1 for the 'do'
+	body->expr.nodes = malloc(nargs, sizeof(Node*));
+	body->expr.nodes[0] = makeVar("do");
+	for (size_t i = 1; i < nargs; i++) {
+		body->expr.nodes[i] = node_copy(args[i]);
+	}
+	node->function.body = body;
+
+	return rr_node(node);
+}
+
 RunResult builtin_set(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
-	EXPECT(== 2);
+	EXPECT(>=, 2);
 	EXPECT_TYPE(0, AST_VAR);
 
-	RunResult rr = run(env, args[1]);
+	RunResult rr;
+	if (nargs == 2) { // value
+		rr = run(env, args[1]);
+	} else { // lambda
+		rr = builtin_fun(env, "fun", nargs-1, args+1);
+	}
+
 	if (rr.err != NULL) {
 		return rr;
+	}
+
+	while (env->parent != NULL) {
+		const Node *node = varmap_getItem(env->variables, name);
+		if (node != NULL) {
+			break;
+		}
+		env = env->parent;
 	}
 
 	if (rr.node == NULL) {
@@ -193,19 +251,20 @@ RunResult builtin_set(InterEnv *env, const char *name, size_t nargs, const Node 
 RunResult builtin_let(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
-	EXPECT(>= 3);
+	EXPECT(>=, 3);
 
-	builtin_set(env, "set", 2, args);
+	InterEnv *scope = createScope(env);
+	builtin_set(scope, "set", 2, args);
 
 	RunResult rr;
 	for (size_t i = 2; i < nargs; i++) {
-		rr = run(env, args[i]);
+		rr = run(scope, args[i]);
 		if (rr.err != NULL) {
 			return rr;
 		}
 	}
 
-	varmap_removeItem(env->variables, args[0]->var.name);
+	in_destroy(scope);
 
 	return rr;
 }
@@ -213,7 +272,7 @@ RunResult builtin_let(InterEnv *env, const char *name, size_t nargs, const Node 
 RunResult builtin_streq(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
-	EXPECT(== 2);
+	EXPECT(==, 2);
 
 	Node *res = malloc(1, sizeof(Node));
 	res->type = AST_NUM;
@@ -249,45 +308,6 @@ Node *mkQuotedExpr(size_t len) {
 	return res;
 }
 
-Node *makeVar(const char *name) {
-	Node *res = malloc(1, sizeof(Node));
-	res->type = AST_VAR;
-	res->var.name = astrcpy(name);
-	return res;
-}
-
-RunResult builtin_fun(InterEnv *env, const char *name, size_t nargs, const Node **args) {
-	(void)env;
-	(void)name;
-
-	EXPECT(>= 2);
-	EXPECT_TYPE(0, AST_EXPR);
-
-	Node *node = malloc(1, sizeof(Node));
-	node->type = AST_FUN;
-	node->function.isBuiltin = false;
-
-	size_t fn_nargs = args[0]->expr.len;
-	node->function.args.len = fn_nargs;
-	node->function.args.nodes = malloc(fn_nargs, sizeof(Node*));
-	for (size_t i = 0; i < fn_nargs; i++) {
-		assert(args[0]->expr.nodes[i]->type == AST_VAR); // TODO
-		node->function.args.nodes[i] = node_copy(args[0]->expr.nodes[i]);
-	}
-
-	Node *body = malloc(1, sizeof(Node));
-	body->type = AST_EXPR;
-	body->expr.len = nargs; // we have +1 for the 'do'
-	body->expr.nodes = malloc(nargs, sizeof(Node*));
-	body->expr.nodes[0] = makeVar("do");
-	for (size_t i = 1; i < nargs; i++) {
-		body->expr.nodes[i] = node_copy(args[i]);
-	}
-	node->function.body = body;
-
-	return rr_node(node);
-}
-
 RunResult builtin_concat(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
@@ -317,6 +337,93 @@ RunResult builtin_concat(InterEnv *env, const char *name, size_t nargs, const No
 	return res;
 }
 
+RunResult builtin_times(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(>=, 3);
+	EXPECT_TYPE(0, AST_VAR);
+	EXPECT_TYPE(1, AST_EXPR);
+
+	const Node *fromNode = args[1]->expr.nodes[0];
+	assert(fromNode->num.val == (int)fromNode->num.val);
+	const Node *toNode = args[1]->expr.nodes[1];
+	assert(toNode->num.val == (int)toNode->num.val);
+
+	RunResult rr;
+
+	for (int i = fromNode->num.val; i < toNode->num.val; i++) {
+		Node *node = malloc(1, sizeof(Node));
+		node->type = AST_NUM;
+		node->num.val = i;
+		varmap_setItem(env->variables, args[0]->var.name, node);
+		node_free(node);
+
+		for (size_t j = 2; j < nargs; j++) {
+			rr = run(env, args[j]);
+			if (rr.err != NULL) {
+				goto exit;
+			}
+		}
+	}
+
+exit:
+	varmap_removeItem(env->variables, args[0]->var.name);
+	return rr;
+}
+
+RunResult builtin_eval(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(==, 1);
+
+	RunResult rr = run(env, args[0]);
+	if (rr.err != NULL) {
+		return rr;
+	} else if (rr.node->type != AST_STR) {
+		return rr_errf("expected expr to have type AST_STR");
+	}
+
+	const char *src = rr.node->str.str;
+
+	ProgramParseResult program = parseprogram(src);
+	if (program.err) {
+		return rr_errf("Program error: %s at line %d col %d\n", program.err, program.errloc.line, program.errloc.col);
+	} else if (program.len == 0) {
+		return rr_errf("Program is empty\n");
+	}
+
+	RunResult res;
+	for (size_t i = 0; i < program.len; i++) {
+		res = in_run(env, skipIntern(program.nodes[i]));
+		if (res.err != NULL) {
+			break;
+		}
+	}
+	return res;
+}
+
+RunResult builtin_assert(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(==, 1);
+
+	RunResult rr = run(env, args[0]);
+	if (rr.err != NULL) {
+		return rr;
+	} else if (rr.node->type != AST_NUM) {
+		return rr_errf("expected cond to have type AST_NUM");
+	}
+
+	if (!rr.node->num.val) {
+		char *str = stringify(args[0], 0);
+		fprintf(stderr, "assertion failed: %s (result was %g)\n", str, rr.node->num.val);
+		free(str);
+		abort();
+	}
+
+	return rr_null();
+}
+
 static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const char*, size_t, const Node**)) {
 	Builtin res;
 
@@ -329,7 +436,7 @@ static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const ch
 	return res;
 }
 
-#define STATIC_BUILTIN_COUNT 17
+#define STATIC_BUILTIN_COUNT 22
 static bool setup = false;
 Builtin staticbuiltins[STATIC_BUILTIN_COUNT];
 
@@ -340,17 +447,22 @@ void setBuiltins(void) {
 	staticbuiltins[ 3] = makeBuiltin("/", builtin_arith);
 	staticbuiltins[ 4] = makeBuiltin("*", builtin_arith);
 	staticbuiltins[ 5] = makeBuiltin("^", builtin_arith);
-	staticbuiltins[ 6] = makeBuiltin("eq", builtin_comp);
-	staticbuiltins[ 7] = makeBuiltin("neq", builtin_comp);
-	staticbuiltins[ 8] = makeBuiltin("lt", builtin_comp);
-	staticbuiltins[ 9] = makeBuiltin("gt", builtin_comp);
-	staticbuiltins[10] = makeBuiltin("do", builtin_do);
-	staticbuiltins[11] = makeBuiltin("if", builtin_if);
-	staticbuiltins[12] = makeBuiltin("set", builtin_set);
-	staticbuiltins[13] = makeBuiltin("let", builtin_let);
-	staticbuiltins[14] = makeBuiltin("streq", builtin_streq);
-	staticbuiltins[15] = makeBuiltin("fun", builtin_fun);
-	staticbuiltins[16] = makeBuiltin("concat", builtin_concat);
+	staticbuiltins[ 6] = makeBuiltin("==", builtin_comp);
+	staticbuiltins[ 7] = makeBuiltin("!=", builtin_comp);
+	staticbuiltins[ 8] = makeBuiltin("<", builtin_comp);
+	staticbuiltins[ 9] = makeBuiltin(">", builtin_comp);
+	staticbuiltins[10] = makeBuiltin("<=", builtin_comp);
+	staticbuiltins[11] = makeBuiltin(">=", builtin_comp);
+	staticbuiltins[12] = makeBuiltin("do", builtin_do);
+	staticbuiltins[13] = makeBuiltin("if", builtin_if);
+	staticbuiltins[14] = makeBuiltin("set", builtin_set);
+	staticbuiltins[15] = makeBuiltin("let", builtin_let);
+	staticbuiltins[16] = makeBuiltin("streq", builtin_streq);
+	staticbuiltins[17] = makeBuiltin("fun", builtin_fun);
+	staticbuiltins[18] = makeBuiltin("concat", builtin_concat);
+	staticbuiltins[19] = makeBuiltin("times", builtin_times);
+	staticbuiltins[20] = makeBuiltin("eval", builtin_eval);
+	staticbuiltins[21] = makeBuiltin("assert", builtin_assert);
 }
 
 Builtin *getBuiltin(const char *name) {

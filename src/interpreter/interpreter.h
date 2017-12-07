@@ -3,7 +3,8 @@
 #include "../intern.h"
 #include "./internal.h"
 
-InterEnv* in_make(void);
+InterEnv* in_make();
+InterEnv *in_copy(const InterEnv*);
 void in_destroy(InterEnv *is);
 
 RunResult in_run(InterEnv*, const InternedNode);

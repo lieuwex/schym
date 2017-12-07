@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "util.h"
 #include "stringify.h"
+#include "interpreter/interpreter.h"
 
 static Node *make_node(ASTtype type) {
 	Node *res = malloc(1, sizeof(Node));
@@ -104,7 +105,6 @@ static ParseResult parsenumber(const char **codep) {
 	double val = strtod(buf, &endptr);
 	if (*endptr != '\0') {
 		res.err = "invalid number";
-		res._errp = *codep;
 		return res;
 	}
 	free(buf);
@@ -118,12 +118,14 @@ static ParseResult parsenumber(const char **codep) {
 
 static ParseResult parsestring(const char **codep) {
 	const char *code = *codep;
+
 	ParseResult res = make_parse_res();
 
 	if (*code != '"') {
 		return res;
 	}
 	code++;
+	const char *codeCpy = code;
 
 	size_t len = 0;
 	while (*code != '"') {
@@ -132,11 +134,32 @@ static ParseResult parsestring(const char **codep) {
 			res._errp = code - 1;
 			return res;
 		}
-		code++;
 		len++;
+		if (*code == '\\') {
+			code += 2;
+		} else {
+			code++;
+		}
 	}
 
-	char *content = copystringfromend(code, len);
+	char *content = malloc(len+1, sizeof(char));
+	code = codeCpy;
+	while (*code != '"') {
+		char c;
+
+		if (*code == '\\') {
+			c = '"';
+			code += 2;
+		} else {
+			c = *code;
+			code++;
+		}
+
+		*content = c;
+		content++;
+	}
+	*content = '\0';
+	content -= len;
 
 	res.node = make_node(AST_STR);
 	res.node->str.size = len;
@@ -264,28 +287,6 @@ static ParseResult parsevariable(const char **codep) {
 	return res;
 }
 
-// Loop over every paser and return the result of the one that passes
-ParseResult _parse(const char **codep) {
-	ParseResult res = make_parse_res();
-	if (!*codep) return res;
-	skipspaces(codep);
-
-#define TRY_PARSE_FN(fn) res = fn(codep); if (res.node || res.err) return res;
-
-	TRY_PARSE_FN(parsecomment);
-	TRY_PARSE_FN(parsenumber);
-	TRY_PARSE_FN(parsestring);
-	TRY_PARSE_FN(parseexpression);
-	TRY_PARSE_FN(parsequoted);
-
-	// should be last
-	TRY_PARSE_FN(parsevariable);
-
-#undef TRY_PARSE_FN
-
-	return res; // nothing found
-}
-
 Location getpos(const int index, const char *code) {
 	Location loc;
 	loc.index = index;
@@ -316,10 +317,34 @@ Location getpos(const int index, const char *code) {
 	return loc;
 }
 
+// Loop over every paser and return the result of the one that passes
+ParseResult _parse(const char **codep) {
+	ParseResult res = make_parse_res();
+	if (!*codep) return res;
+	skipspaces(codep);
+
+#define TRY_PARSE_FN(fn) res = fn(codep); if (res.node || res.err) return res;
+
+	TRY_PARSE_FN(parsecomment);
+	TRY_PARSE_FN(parsenumber);
+	TRY_PARSE_FN(parsestring);
+	TRY_PARSE_FN(parseexpression);
+	TRY_PARSE_FN(parsequoted);
+
+	// should be last
+	TRY_PARSE_FN(parsevariable);
+
+#undef TRY_PARSE_FN
+
+	return res; // nothing found
+}
+
 ParseResult parse(const char *code) {
 	const char *codestart = code;
 	ParseResult res = _parse(&code);
-	res.errloc = getpos(code - codestart, codestart);
+	if (res.err != NULL) {
+		res.errloc = getpos(code - codestart, codestart);
+	}
 	return res;
 }
 
@@ -393,6 +418,7 @@ void node_free(Node *node) {
 		for (size_t i = 0; i < expr->len; i++) {
 			node_free(expr->nodes[i]);
 		}
+		free(expr->nodes);
 		break;
 	}
 	case AST_VAR: {
@@ -414,6 +440,7 @@ void node_free(Node *node) {
 			for (size_t i = 0; i < fn->args.len; i++) {
 				node_free(fn->args.nodes[i]);
 			}
+			in_destroy(fn->env);
 		}
 		break;
 	}
@@ -473,6 +500,7 @@ Node *node_copy(const Node *src) {
 		} else {
 			res->function.args = src->function.args; // REVIEW
 			res->function.body = node_copy(src->function.body);
+			res->function.env = in_copy(src->function.env);
 		}
 	}
 

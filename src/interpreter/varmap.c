@@ -32,6 +32,8 @@ Node *varmap_getItem(VarMap *map, const char *key) {
 }
 
 void varmap_setItem(VarMap *map, const char *key, const Node *node) {
+	varmap_removeItem(map, key);
+
 	map->nkeys++;
 	map->keys = realloc(map->keys, map->nkeys, sizeof(char*));
 	map->values = realloc(map->values, map->nkeys, sizeof(Node*));
@@ -64,6 +66,14 @@ void varmap_removeItem(VarMap *map, const char *key) {
 		(map->nkeys - i - 1) * sizeof(Node*)
 	);
 	map->nkeys--;
+}
+
+VarMap *varmap_copy(const VarMap *map) {
+	VarMap *res = varmap_make();
+	for (size_t i = 0; i < map->nkeys; i++) {
+		varmap_setItem(res, map->keys[i], map->values[i]);
+	}
+	return res;
 }
 
 void varmap_free(VarMap *map) {

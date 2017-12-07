@@ -43,7 +43,7 @@ char *stringify(const Node *node, int lvl) {
 	case AST_EXPR:
 		strappend(&res, "(");
 		bool didindent = false;
-		bool issmall = node->expr.len < 3;
+		bool issmall = node->expr.len < 4;
 		for (size_t i = 0; i < node->expr.len; i++) {
 			if (i != 0) {
 				didindent = true;
