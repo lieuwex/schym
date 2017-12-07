@@ -436,33 +436,51 @@ static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const ch
 	return res;
 }
 
-#define STATIC_BUILTIN_COUNT 22
+struct BuiltinList {
+	size_t cap;
+	size_t len;
+	Builtin *items;
+};
+BuiltinList builtins;
+
+void addBuiltin(const char *name, BuiltinFn fn) {
+	builtins.len++;
+	if (builtins.cap < builtins.len) {
+		builtins.cap *= 2;
+		builtins.items = realloc(builtins.items, builtins.cap, sizeof(Builtin));
+	}
+	builtins.items[builtins.len - 1] = makeBuiltin(name, fn);
+}
+
 static bool setup = false;
-Builtin staticbuiltins[STATIC_BUILTIN_COUNT];
 
 void setBuiltins(void) {
-	staticbuiltins[ 0] = makeBuiltin("print", builtin_print);
-	staticbuiltins[ 1] = makeBuiltin("+", builtin_arith);
-	staticbuiltins[ 2] = makeBuiltin("-", builtin_arith);
-	staticbuiltins[ 3] = makeBuiltin("/", builtin_arith);
-	staticbuiltins[ 4] = makeBuiltin("*", builtin_arith);
-	staticbuiltins[ 5] = makeBuiltin("^", builtin_arith);
-	staticbuiltins[ 6] = makeBuiltin("==", builtin_comp);
-	staticbuiltins[ 7] = makeBuiltin("!=", builtin_comp);
-	staticbuiltins[ 8] = makeBuiltin("<", builtin_comp);
-	staticbuiltins[ 9] = makeBuiltin(">", builtin_comp);
-	staticbuiltins[10] = makeBuiltin("<=", builtin_comp);
-	staticbuiltins[11] = makeBuiltin(">=", builtin_comp);
-	staticbuiltins[12] = makeBuiltin("do", builtin_do);
-	staticbuiltins[13] = makeBuiltin("if", builtin_if);
-	staticbuiltins[14] = makeBuiltin("set", builtin_set);
-	staticbuiltins[15] = makeBuiltin("let", builtin_let);
-	staticbuiltins[16] = makeBuiltin("streq", builtin_streq);
-	staticbuiltins[17] = makeBuiltin("fun", builtin_fun);
-	staticbuiltins[18] = makeBuiltin("concat", builtin_concat);
-	staticbuiltins[19] = makeBuiltin("times", builtin_times);
-	staticbuiltins[20] = makeBuiltin("eval", builtin_eval);
-	staticbuiltins[21] = makeBuiltin("assert", builtin_assert);
+	builtins.len = 0;
+	builtins.cap = 1;
+	builtins.items = calloc(builtins.cap, sizeof(Builtin));
+
+	addBuiltin("print", builtin_print);
+	addBuiltin("+", builtin_arith);
+	addBuiltin("-", builtin_arith);
+	addBuiltin("/", builtin_arith);
+	addBuiltin("*", builtin_arith);
+	addBuiltin("^", builtin_arith);
+	addBuiltin("==", builtin_comp);
+	addBuiltin("!=", builtin_comp);
+	addBuiltin("<", builtin_comp);
+	addBuiltin(">", builtin_comp);
+	addBuiltin("<=", builtin_comp);
+	addBuiltin(">=", builtin_comp);
+	addBuiltin("do", builtin_do);
+	addBuiltin("if", builtin_if);
+	addBuiltin("set", builtin_set);
+	addBuiltin("let", builtin_let);
+	addBuiltin("streq", builtin_streq);
+	addBuiltin("fun", builtin_fun);
+	addBuiltin("concat", builtin_concat);
+	addBuiltin("times", builtin_times);
+	addBuiltin("eval", builtin_eval);
+	addBuiltin("assert", builtin_assert);
 }
 
 Builtin *getBuiltin(const char *name) {
@@ -470,10 +488,10 @@ Builtin *getBuiltin(const char *name) {
 		setBuiltins(); // HACK
 	}
 
-	for (size_t i = 0; i < STATIC_BUILTIN_COUNT; i++) {
-		Builtin builtin = staticbuiltins[i];
+	for (size_t i = 0; i < builtins.len; i++) {
+		Builtin builtin = builtins.items[i];
 		if (streq(name, builtin.name)) {
-			return staticbuiltins + i; // HACK
+			return &builtins.items[i];
 		}
 	}
 
