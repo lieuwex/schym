@@ -202,14 +202,6 @@ RunResult run(InterEnv *env, const Node *node) {
 
 		const Node **args = (const Node**)node->expr.nodes + 1;
 
-		InterEnv *envToUse = env;
-		InterEnv *oldParent = NULL;
-		if (!rr.node->function.isBuiltin) {
-			envToUse = rr.node->function.env;
-			oldParent = envToUse->parent;
-			envToUse->parent = env;
-		}
-
 		RunResult res = runFunction(
 			rr.node->function.isBuiltin ?
 				env :
@@ -219,9 +211,6 @@ RunResult run(InterEnv *env, const Node *node) {
 			args,
 			node->expr.len - 1
 		);
-		if (!rr.node->function.isBuiltin) {
-			envToUse->parent = oldParent;
-		}
 		return res;
 	}
 
