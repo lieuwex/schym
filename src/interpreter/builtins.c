@@ -67,7 +67,6 @@ RunResult builtin_print(InterEnv *env, const char *name, size_t nargs, const Nod
 RunResult builtin_arith(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 #define CHECKNUM(node) do { \
 	if (node == NULL || node->type != AST_NUM) { \
-		__asm("int3"); \
 		return rr_errf("all arguments should be a number"); \
 	} \
 } while(0);
