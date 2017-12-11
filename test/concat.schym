@@ -1,0 +1,4 @@
+(set a "hello")
+(set b "world")
+(set res (concat a " " b))
+(assert (streq res "hello world"))

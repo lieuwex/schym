@@ -1,0 +1,7 @@
+(set z 5)
+
+(set a (x)
+	 (fun (y) (+ x y z)))
+
+(set res ((a 1) 2))
+(assert (== res 8))
