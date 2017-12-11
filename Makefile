@@ -5,7 +5,7 @@ SRC_FILES = $(shell find src/ -name '*.h' -o -name '*.c') schym.c
 BIN ?= main
 
 
-.PHONY: all clean remake
+.PHONY: all clean remake test
 
 all: $(BIN)
 
@@ -14,6 +14,8 @@ clean:
 
 remake: clean all
 
+test: $(BIN)
+	./test.sh
 
 $(BIN): $(SRC_FILES)
 	$(CC) $(CFLAGS) -o $@ $(filter %.c,$^)
