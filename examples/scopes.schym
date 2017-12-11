@@ -10,5 +10,5 @@
 (print "after fn" x)
 
 (header "testing let scopes")
-(let x 5 (print "let" x))
+(let ((x 5)) (print "let" x))
 (print "after let" x)

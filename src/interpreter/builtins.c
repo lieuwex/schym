@@ -250,13 +250,36 @@ RunResult builtin_set(InterEnv *env, const char *name, size_t nargs, const Node 
 RunResult builtin_let(InterEnv *env, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
-	EXPECT(>=, 3);
+	EXPECT(>=, 2);
 
 	InterEnv *scope = createScope(env);
-	builtin_set(scope, "set", 2, args);
+
+	EXPECT_TYPE(0, AST_EXPR);
+	for (size_t i = 0; i < args[0]->expr.len; i++) {
+		const Node *node = args[0]->expr.nodes[i];
+		if (node->type != AST_EXPR) {
+			RunResult rr = run(env, node);
+			if (rr.err != NULL) {
+				return rr;
+			}
+			node = rr.node;
+		}
+
+		const Expression *pair = &node->expr;
+		assert(pair->len == 2); // TODO
+
+		RunResult rr = run(env, pair->nodes[1]);
+		if (rr.err != NULL) {
+			return rr;
+		}
+
+		const char *name = pair->nodes[0]->var.name;
+		const Node *val = rr.node;
+		varmap_setItem(scope->variables, name, val);
+	}
 
 	RunResult rr;
-	for (size_t i = 2; i < nargs; i++) {
+	for (size_t i = 1; i < nargs; i++) {
 		rr = run(scope, args[i]);
 		if (rr.err != NULL) {
 			return rr;
