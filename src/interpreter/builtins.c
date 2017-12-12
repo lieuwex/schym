@@ -10,7 +10,7 @@
 
 #define EXPECT_TYPE(narg, typ) do { \
 	if (args[(narg)]->type != (typ)) { \
-		return rr_errf("expected argument %d to be of type %s", narg, #typ); \
+		return rr_errf("expected argument %d to be of type %s (but is of type %s)", narg, #typ, typetostr(args[(narg)])); \
 	} \
 } while(0)
 
