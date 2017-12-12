@@ -59,6 +59,8 @@ void ie_free(InternEnvironment *env, bool freeValues) {
 }
 
 InternedNode intern(const Node *node, InternEnvironment *env) {
+	return skipIntern(node);
+
 	Node *copy = node_copy(node);
 
 	if (
