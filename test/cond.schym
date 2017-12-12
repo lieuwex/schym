@@ -1,0 +1,26 @@
+(set val 1)
+(set a (cond
+		 ((== val 1) 10)))
+(assert (== a 10))
+
+(set val 2)
+(set a (cond
+		 ((== val 2) 10 15)))
+(assert (== a 15))
+
+(set val 3)
+(set a (cond
+		 ((== val 2) 10 15)
+		 ('else 5)))
+(assert (== a 5))
+
+(set val 3)
+(set a (cond
+		 ('else 1)))
+(assert (== a 1))
+
+(set val 2)
+(set a (cond
+		 ('else 5)
+		 ((== val 2) 10 15)))
+(assert (== a 15))

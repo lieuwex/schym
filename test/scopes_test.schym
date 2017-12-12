@@ -5,3 +5,7 @@
 
 (set res ((a 1) 2))
 (assert (== res 8))
+
+(set a ()
+	(fun () z))
+(assert (== ((a)) 5))
