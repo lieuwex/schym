@@ -50,11 +50,15 @@ char *readfile(const char *fname) {
 }
 
 void printusage(const char *progname) {
-	fprintf(stderr, "usage:\t%s [ -e script | file ]\n", progname);
+	fprintf(stderr, "USAGE:\t%s [-f] [ -e script | file ]\n\n", progname);
+
+	fprintf(stderr, "FLAGS:\n");
+	fprintf(stderr, "\t-f\tformat the given file\n");
 }
 
 int main(int argc, char **argv) {
 	char *src = NULL;
+	bool format = false;
 
 #define FLAG(s, l) (streq(argv[i], s) || streq(argv[i], l))
 	for (int i = 1; i < argc; i++) {
@@ -62,11 +66,7 @@ int main(int argc, char **argv) {
 			i++;
 			src = astrcpy(argv[i]);
 		} else if (FLAG("-f", "--format")) {
-			i++;
-			src = astrcpy(argv[i]);
-			ProgramParseResult p = parseprogram(src);
-			printf("%s\n", stringify(p.nodes[0], 0));
-			return 0;
+			format = true;
 		} else if (FLAG("-h", "--help")) {
 			printusage(argv[0]);
 			return 0;
@@ -95,6 +95,13 @@ int main(int argc, char **argv) {
 	}
 
 	free(src);
+
+	if (format) {
+		for (size_t i = 0; i < program.len; i++) {
+			printf("%s\n", stringify(program.nodes[i], 0));
+		}
+		return 0;
+	}
 
 	InterEnv *is = in_make();
 	InternEnvironment *env = ie_make(); // TODO: free
