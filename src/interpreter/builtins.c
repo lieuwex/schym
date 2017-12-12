@@ -446,6 +446,98 @@ RunResult builtin_assert(InterEnv *env, const char *name, size_t nargs, const No
 	return rr_null();
 }
 
+RunResult builtin_cond(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	for (size_t i = 0; i < nargs; i++) {
+		EXPECT_TYPE(i, AST_EXPR);
+
+		const Expression *expr = &args[i]->expr;
+		RunResult cond_rr = run(env, expr->nodes[0]);
+		if (cond_rr.err != NULL) {
+			return cond_rr;
+		}
+
+		if (cond_rr.node->type == AST_QUOTED) {
+			continue;
+		}
+		assert(cond_rr.node->type == AST_NUM);
+
+		if (cond_rr.node->num.val) {
+			return builtin_do(
+				env,
+				"do",
+				expr->len-1,
+				(const Node **)expr->nodes+1
+			);
+		}
+	}
+
+	for (size_t i = 0; i < nargs; i++) {
+		EXPECT_TYPE(i, AST_EXPR);
+
+		const Expression *expr = &args[i]->expr;
+		const Node *condition = expr->nodes[0];
+
+		if (
+			condition->type == AST_QUOTED &&
+			condition->quoted.node->type == AST_VAR &&
+			streq(condition->quoted.node->var.name, "else")
+		) {
+			return builtin_do(
+				env,
+				"do",
+				expr->len-1,
+				(const Node **)expr->nodes+1
+			);
+		}
+	}
+
+	return rr_null();
+}
+
+RunResult builtin_to_number(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(==, 1);
+	RunResult rr = run(env, args[0]);
+	if (rr.err != NULL) {
+		return rr;
+	}
+
+	switch (rr.node->type) {
+	case AST_NUM:
+		return rr_node(node_copy(rr.node));
+
+	case AST_STR: {
+		ParseResult pr = parse(rr.node->str.str);
+		assert(pr.err == NULL && pr.node != NULL && pr.node->type == AST_NUM);
+		return rr_node(pr.node);
+	}
+
+	default:
+		return rr_errf("expected string or number, got %s", typetostr(rr.node));
+	}
+}
+
+RunResult builtin_input(InterEnv *env, const char *name, size_t nargs, const Node **args) {
+	(void)env;
+	(void)name;
+	(void)args;
+
+	EXPECT(==, 0);
+
+	char *line = NULL;
+	size_t len = 0;
+	getline(&line, &len, stdin);
+
+	Node *res = malloc(1, sizeof(Node));
+	res->type = AST_STR;
+	res->str.str = line;
+	res->str.size = len;
+	return rr_node(res);
+}
+
 static Builtin makeBuiltin(const char *name, RunResult (*fn)(InterEnv*, const char*, size_t, const Node**)) {
 	Builtin res;
 
@@ -503,6 +595,9 @@ void setBuiltins(void) {
 	addBuiltin("times", builtin_times);
 	addBuiltin("eval", builtin_eval);
 	addBuiltin("assert", builtin_assert);
+	addBuiltin("cond", builtin_cond);
+	addBuiltin("to-number", builtin_to_number);
+	addBuiltin("input", builtin_input);
 }
 
 Builtin *getBuiltin(const char *name) {
