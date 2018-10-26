@@ -374,7 +374,10 @@ ProgramParseResult parseprogram(const char *code) {
 			}
 			res.err = err;
 			break;
-		} else if (item.node->type != AST_EXPR) {
+		} else if (
+			item.node->type != AST_EXPR
+			&& item.node->type != AST_COMMENT
+		) {
 			char *err;
 			asprintf(&err, "expected an expression, got a %s instead", typetostr(item.node));
 			res.err = err;
