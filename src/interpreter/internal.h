@@ -1,13 +1,18 @@
 #pragma once
 
-#include "./interpreter.h"
-#include "./varmap.h"
 #include "../ast.h"
+#include "./scope.h"
 
 // TODO: better way for range
 #define EXPECT(cond, n) do { \
 	if (!(nargs cond n)) { \
 		return rr_errf("expected number of args to %s %d but is %d", #cond, n, nargs); \
+	} \
+} while(0)
+
+#define EXPECT_TYPE(narg, typ) do { \
+	if (args[(narg)]->type != (typ)) { \
+		return rr_errf("expected argument %d to be of type %s (but is of type %s)", narg, #typ, typetostr(args[(narg)])); \
 	} \
 } while(0)
 
@@ -18,17 +23,12 @@ typedef struct RunResult {
 	char *err;
 } RunResult;
 
-typedef struct InterEnv {
-	VarMap *variables;
-	InterEnv *parent;
-} InterEnv;
-
 RunResult rr_null(void);
 RunResult rr_errf(const char*, ...);
 RunResult rr_node(Node*);
 
-Node *getVar(const InterEnv*, const char*);
+Node *getVar(const Scope*, const char*);
 
-RunResult run(InterEnv*, const Node*);
+RunResult run(Scope*, const Node*);
 
-double getNumVal(InterEnv*, const Node*);
+double getNumVal(Scope*, const Node*);

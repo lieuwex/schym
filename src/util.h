@@ -3,8 +3,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "ast.h"
-
 #define malloc(count, size) malloc(count * size)
 #define realloc(ptr, count, size) realloc(ptr, count * size)
 

@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	InterEnv *is = in_make();
+	Scope *scope = scope_make(NULL, true);
 	InternEnvironment *env = ie_make(); // TODO: free
 	for (size_t i = 0; i < program.len; i++) {
 		if (program.nodes[i]->type != AST_EXPR) {
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 		}
 
 		InternedNode interned = intern(program.nodes[i], env);
-		RunResult res = in_run(is, interned);
+		RunResult res = in_run(scope, interned);
 		node_free(interned.node);
 		//in_destroy(is);
 		if (res.err != NULL) {

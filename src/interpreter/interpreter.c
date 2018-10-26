@@ -12,31 +12,6 @@
 
 // TODO: some way to handle builtins
 
-InterEnv *in_make() {
-	InterEnv *in = malloc(1, sizeof(InterEnv));
-	assert(in);
-	in->variables = varmap_make();
-	in->parent = NULL;
-	assert(in->variables);
-	return in;
-}
-
-InterEnv *in_copy(const InterEnv *env) {
-	InterEnv *res = in_make();
-
-	res->parent = env->parent;
-
-	varmap_free(res->variables);
-	res->variables = varmap_copy(env->variables);
-
-	return res;
-}
-
-void in_destroy(InterEnv *is) {
-	varmap_free(is->variables);
-	free(is);
-}
-
 RunResult rr_null(void) {
 	RunResult res = {
 		.node = NULL,
@@ -90,16 +65,16 @@ RunResult rr_node(Node *node) {
 	return res;
 }
 
-double getNumVal(InterEnv *env, const Node *node) {
+double getNumVal(Scope *scope, const Node *node) {
 	switch (node->type) {
 	case AST_NUM:
 		return node->num.val;
 
 	case AST_VAR:
 	case AST_EXPR: {
-		RunResult rr = run(env, node);
+		RunResult rr = run(scope, node);
 		assert(rr.err == NULL);
-		double res = getNumVal(env, rr.node);
+		double res = getNumVal(scope, rr.node);
 		if (rr.node != NULL) {
 			node_free(rr.node);
 		}
@@ -121,9 +96,9 @@ double getNumVal(InterEnv *env, const Node *node) {
 	}
 }
 
-static RunResult runFunction(InterEnv *env, const Function *fn, const char *name, const Node **args, size_t nargs) {
+static RunResult runFunction(Scope *scope, const Function *fn, const char *name, const Node **args, size_t nargs) {
 	if (fn->isBuiltin) {
-		return fn->fn(env, name, nargs, args);
+		return fn->fn(scope, name, nargs, args);
 	}
 
 	size_t fn_nargs = fn->args.len;
@@ -132,14 +107,14 @@ static RunResult runFunction(InterEnv *env, const Function *fn, const char *name
 
 	for (size_t i = 0; i < fn_nargs; i++) {
 		assert(i < nargs);
-		RunResult rr = run(env, args[i]);
+		RunResult rr = run(scope, args[i]);
 		if (rr.err != NULL) {
 			return rr;
 		}
-		varmap_setItem(env->variables, fn->args.nodes[i]->var.name, node_copy(rr.node));
+		varmap_setItem(scope->variables, fn->args.nodes[i]->var.name, node_copy(rr.node));
 	}
 
-	RunResult rr = run(env, fn->body);
+	RunResult rr = run(scope, fn->body);
 	if (rr.err != NULL) {
 		return rr;
 	}
@@ -148,23 +123,21 @@ static RunResult runFunction(InterEnv *env, const Function *fn, const char *name
 	return rr;
 }
 
-Node *getVar(const InterEnv *env, const char *name) {
-	Node *res = NULL;
-
-	while (res == NULL && env != NULL) {
-		res = varmap_getItem(env->variables, name);
+Node *getVar(const Scope *scope, const char *name) {
+	while (scope != NULL) {
+		Node *res = varmap_getItem(scope->variables, name);
 		if (res != NULL) {
-			break;
+			return res;
 		}
 
-		env = env->parent;
+		scope = scope->parent;
 	}
 
-	return res;
+	return NULL;
 }
 
-RunResult run(InterEnv *env, const Node *node) {
-	assert(env);
+RunResult run(Scope *scope, const Node *node) {
+	assert(scope);
 	assert(node);
 
 	switch (node->type) {
@@ -180,7 +153,7 @@ RunResult run(InterEnv *env, const Node *node) {
 			return rr_errf("Non-quoted expression can't be empty");
 		}
 
-		RunResult rr = run(env, node->expr.nodes[0]);
+		RunResult rr = run(scope, node->expr.nodes[0]);
 		if (rr.err != NULL) {
 			return rr;
 		}
@@ -204,8 +177,8 @@ RunResult run(InterEnv *env, const Node *node) {
 
 		RunResult res = runFunction(
 			rr.node->function.isBuiltin ?
-				env :
-				rr.node->function.env,
+				scope :
+				rr.node->function.scope,
 			&rr.node->function,
 			node->expr.nodes[0]->var.name,
 			args,
@@ -215,12 +188,13 @@ RunResult run(InterEnv *env, const Node *node) {
 	}
 
 	case AST_VAR: {
-		const Node *val = getVar(env, node->var.name);
+		const Node *val = getVar(scope, node->var.name);
 		if (val != NULL) {
 			return rr_node(node_copy(val));
 		}
 
-		Builtin *builtin = getBuiltin(node->var.name);
+		Scope *rootScope = scope_get_root(scope);
+		Builtin *builtin = getBuiltin(rootScope->builtins, node->var.name);
 		if (builtin != NULL) {
 			// REVIEW
 			Node *node = malloc(1, sizeof(Node));
@@ -240,6 +214,6 @@ RunResult run(InterEnv *env, const Node *node) {
 	}
 }
 
-RunResult in_run(InterEnv *env, const InternedNode node) {
-	return run(env, node.node);
+RunResult in_run(Scope *scope, const InternedNode node) {
+	return run(scope, node.node);
 }

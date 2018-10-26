@@ -440,7 +440,7 @@ void node_free(Node *node) {
 			for (size_t i = 0; i < fn->args.len; i++) {
 				node_free(fn->args.nodes[i]);
 			}
-			in_destroy(fn->env);
+			scope_free(fn->scope);
 		}
 		break;
 	}
@@ -500,7 +500,7 @@ Node *node_copy(const Node *src) {
 		} else {
 			res->function.args = src->function.args; // REVIEW
 			res->function.body = node_copy(src->function.body);
-			res->function.env = in_copy(src->function.env);
+			res->function.scope = scope_copy(src->function.scope);
 		}
 	}
 

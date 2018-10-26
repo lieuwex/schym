@@ -6,8 +6,8 @@
 
 struct RunResult;
 typedef struct RunResult RunResult;
-struct InterEnv;
-typedef struct InterEnv InterEnv;
+struct Scope;
+typedef struct Scope Scope;
 
 typedef enum ASTtype {
 	AST_QUOTED,
@@ -53,12 +53,12 @@ typedef struct Function {
 	bool isBuiltin;
 	union {
 	// if isBuiltin:
-		RunResult (*fn)(InterEnv*, const char*, size_t, const Node**);
+		RunResult (*fn)(Scope*, const char*, size_t, const Node**);
 	// else:
 		struct {
 			Expression args;
 			Node *body;
-			InterEnv *env;
+			Scope *scope;
 		};
 	};
 } Function;
