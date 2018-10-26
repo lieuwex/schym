@@ -541,6 +541,68 @@ RunResult builtin_input(Scope *scope, const char *name, size_t nargs, const Node
 	return rr_node(res);
 }
 
+static Node *makeList(size_t size) {
+	Node *expr = malloc(1, sizeof(Node));
+	expr->type = AST_EXPR;
+
+	expr->expr.len = size;
+	expr->expr.nodes = calloc(size, sizeof(Node*));
+
+	Node *res = malloc(1, sizeof(Node));
+	res->type = AST_QUOTED;
+	res->quoted.node = expr;
+
+	return res;
+}
+
+RunResult builtin_list(Scope *scope, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	Node *res = makeList(nargs);
+
+	for (size_t i = 0; i < nargs; i++) {
+		const Node *node = args[i];
+		RunResult rr = run(scope, node);
+
+		if (rr.err != NULL) {
+			return rr;
+		}
+
+		res->quoted.node->expr.nodes[i] = rr.node;
+	}
+
+	return rr_node(res);
+}
+
+RunResult builtin_car(Scope *scope, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+
+	EXPECT(==, 1);
+	RunResult rr = run(scope, args[0]);
+	if (rr.err != NULL) {
+		return rr;
+	}
+
+	// REVIEW
+	Node *node = rr.node->quoted.node->expr.nodes[0];
+	return rr_node(node);
+}
+
+RunResult builtin_cdr(Scope *scope, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+	EXPECT(==, 1);
+	RunResult rr = run(scope, args[0]);
+	if (rr.err != NULL) {
+		return rr;
+	}
+
+	// TODO: typecheck
+	// REVIEW
+	rr.node->quoted.node->expr.len--;
+	rr.node->quoted.node->expr.nodes = rr.node->quoted.node->expr.nodes+1;
+	return rr_node(rr.node);
+}
+
 static Builtin makeBuiltin(const char *name, RunResult (*fn)(Scope*, const char*, size_t, const Node**)) {
 	Builtin res;
 
@@ -595,6 +657,11 @@ BuiltinList *builtins_make(bool addPrelude) {
 	addBuiltin(res, "cond", builtin_cond);
 	addBuiltin(res, "to-number", builtin_to_number);
 	addBuiltin(res, "input", builtin_input);
+
+	// list stuff
+	addBuiltin(res, "list", builtin_list);
+	addBuiltin(res, "car", builtin_car);
+	addBuiltin(res, "cdr", builtin_cdr);
 
 	return res;
 }
