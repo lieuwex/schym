@@ -54,6 +54,10 @@ InternEnvironment *ie_make(void) {
 	return env;
 }
 void ie_free(InternEnvironment *env, bool freeValues) {
+	if (env == NULL) {
+		return;
+	}
+
 	map_free(env->map, freeValues);
 	free(env);
 }

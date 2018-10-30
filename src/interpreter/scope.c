@@ -32,6 +32,10 @@ Scope *scope_copy(Scope *scope) {
 }
 
 void scope_free(Scope *scope) {
+	if (scope == NULL) {
+		return;
+	}
+
 	builtins_free(scope->builtins);
 	varmap_free(scope->variables);
 	free(scope);

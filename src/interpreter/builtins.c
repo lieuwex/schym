@@ -71,7 +71,7 @@ RunResult builtin_arith(Scope *scope, const char *name, size_t nargs, const Node
 	if (node == NULL || node->type != AST_NUM) { \
 		return rr_errf("all arguments should be a number"); \
 	} \
-} while(0);
+} while(0)
 
 	EXPECT(>=, 2);
 
@@ -408,27 +408,12 @@ RunResult builtin_eval(Scope *scope, const char *name, size_t nargs, const Node 
 	RunResult rr = run(scope, args[0]);
 	if (rr.err != NULL) {
 		return rr;
-	} else if (rr.node->type != AST_STR) {
-		return rr_errf("expected expr to have type AST_STR");
+	} else if (rr.node->type != AST_QUOTED) {
+		return rr_errf("expected expr to have type AST_QUOTED");
 	}
 
-	const char *src = rr.node->str.str;
-
-	ProgramParseResult program = parseprogram(src);
-	if (program.err) {
-		return rr_errf("Program error: %s at line %d col %d\n", program.err, program.errloc.line, program.errloc.col);
-	} else if (program.len == 0) {
-		return rr_errf("Program is empty\n");
-	}
-
-	RunResult res;
-	for (size_t i = 0; i < program.len; i++) {
-		res = in_run(scope, skipIntern(program.nodes[i]));
-		if (res.err != NULL) {
-			break;
-		}
-	}
-	return res;
+	Node *node = rr.node->quoted.node;
+	return in_run(scope, skipIntern(node));
 }
 
 RunResult builtin_assert(Scope *scope, const char *name, size_t nargs, const Node **args) {
@@ -523,6 +508,26 @@ RunResult builtin_to_number(Scope *scope, const char *name, size_t nargs, const 
 	}
 }
 
+RunResult builtin_to_string(Scope *scope, const char *name, size_t nargs, const Node **args) {
+	(void)scope;
+	(void)name;
+
+	EXPECT(==, 1);
+	RunResult rr = run(scope, args[0]);
+	if (rr.err != NULL) {
+		return rr;
+	}
+
+	char *str = toString(rr.node);
+	node_free(rr.node);
+
+	Node *node = malloc(1, sizeof(Node));
+	node->type = AST_STR;
+	node->str.str = str;
+	node->str.size = strlen(str);
+	return rr_node(node);
+}
+
 RunResult builtin_input(Scope *scope, const char *name, size_t nargs, const Node **args) {
 	(void)scope;
 	(void)name;
@@ -603,6 +608,50 @@ RunResult builtin_cdr(Scope *scope, const char *name, size_t nargs, const Node *
 	return rr_node(rr.node);
 }
 
+RunResult builtin_append(Scope *scope, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+	EXPECT(==, 2);
+
+	RunResult list = run(scope, args[0]);
+	if (list.err != NULL) {
+		return list;
+	}
+
+	RunResult val = run(scope, args[1]);
+	if (val.err != NULL) {
+		return val;
+	}
+
+	if (list.node->type != AST_QUOTED) {
+		return rr_errf("expected list");
+	}
+
+	list.node->quoted.node->expr.len++;
+	list.node->quoted.node->expr.nodes = realloc(list.node->quoted.node->expr.nodes, list.node->quoted.node->expr.len, sizeof(Node*));
+	list.node->quoted.node->expr.nodes[list.node->quoted.node->expr.len-1] = node_copy(val.node);
+
+	return rr_null();
+}
+
+RunResult builtin_load(Scope *scope, const char *name, size_t nargs, const Node **args) {
+	(void)name;
+	EXPECT(==, 1);
+
+	RunResult res;
+	char **files = malloc(nargs, sizeof(char*));
+	nodesToStrings(scope, nargs, args, files);
+
+	char *input = readfile(files[0]);
+	if (input == NULL) {
+		res = rr_errf("error while reading file");
+	} else {
+		res = runProgram(input, scope, true);
+	}
+
+	free(files);
+	return res;
+}
+
 static Builtin makeBuiltin(const char *name, RunResult (*fn)(Scope*, const char*, size_t, const Node**)) {
 	Builtin res;
 
@@ -656,12 +705,16 @@ BuiltinList *builtins_make(bool addPrelude) {
 	addBuiltin(res, "assert", builtin_assert);
 	addBuiltin(res, "cond", builtin_cond);
 	addBuiltin(res, "to-number", builtin_to_number);
+	addBuiltin(res, "to-string", builtin_to_string);
 	addBuiltin(res, "input", builtin_input);
 
 	// list stuff
 	addBuiltin(res, "list", builtin_list);
 	addBuiltin(res, "car", builtin_car);
 	addBuiltin(res, "cdr", builtin_cdr);
+	addBuiltin(res, "append", builtin_append);
+
+	addBuiltin(res, "load", builtin_load);
 
 	return res;
 }

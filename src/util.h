@@ -13,3 +13,5 @@ void strappend(char**, const char*);
 char *astrcpy(const char *src);
 
 char *emptystr(void);
+
+char *readfile(const char *fname);

@@ -32,3 +32,6 @@ Node *getVar(const Scope*, const char*);
 RunResult run(Scope*, const Node*);
 
 double getNumVal(Scope*, const Node*);
+
+// ugly, should be removed later
+RunResult runProgram(char *input, Scope *scope, bool intern);

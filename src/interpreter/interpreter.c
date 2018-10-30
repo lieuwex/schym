@@ -12,6 +12,8 @@
 
 // TODO: some way to handle builtins
 
+#define DEBUG 0
+
 RunResult rr_null(void) {
 	RunResult res = {
 		.node = NULL,
@@ -97,34 +99,56 @@ double getNumVal(Scope *scope, const Node *node) {
 }
 
 static RunResult runFunction(Scope *scope, const Function *fn, const char *name, const Node **args, size_t nargs) {
+#if DEBUG
+	printf("------- calling %s (scope=%p)\n", name, scope);
+	varmap_print(scope->variables);
+	puts("---------");
+	puts("");
+#endif
+
 	if (fn->isBuiltin) {
 		return fn->fn(scope, name, nargs, args);
 	}
 
 	size_t fn_nargs = fn->args.len;
-
 	EXPECT(==, fn_nargs);
 
+	Scope *newScope = scope_make(scope, false);
+	RunResult res;
+
 	for (size_t i = 0; i < fn_nargs; i++) {
-		assert(i < nargs);
 		RunResult rr = run(scope, args[i]);
 		if (rr.err != NULL) {
-			return rr;
+			res = rr;
+			goto done;
 		}
-		varmap_setItem(scope->variables, fn->args.nodes[i]->var.name, node_copy(rr.node));
+
+#if DEBUG
+		printf("(scope %p) varmap_setItem(%s, %s, %s);\n", newScope, "newScope->variables", fn->args.nodes[i]->var.name, "rr.node");
+#endif
+		varmap_setItem(newScope->variables, fn->args.nodes[i]->var.name, rr.node);
 	}
 
-	RunResult rr = run(scope, fn->body);
-	if (rr.err != NULL) {
-		return rr;
+	res = run(newScope, fn->body);
+	if (res.err != NULL) {
+		goto done;
 	}
 
-	rr.node = node_copy(rr.node); // REVIEW
-	return rr;
+	res.node = node_copy(res.node); // REVIEW
+
+done:
+	scope_free(newScope);
+	return res;
 }
 
 Node *getVar(const Scope *scope, const char *name) {
+#if DEBUG
+	int x = 0;
+#endif
 	while (scope != NULL) {
+#if DEBUG
+		printf("getting %s (try %d) (scope %p)\n", name, ++x, scope);
+#endif
 		Node *res = varmap_getItem(scope->variables, name);
 		if (res != NULL) {
 			return res;
@@ -176,9 +200,10 @@ RunResult run(Scope *scope, const Node *node) {
 		const Node **args = (const Node**)node->expr.nodes + 1;
 
 		RunResult res = runFunction(
-			rr.node->function.isBuiltin ?
-				scope :
-				rr.node->function.scope,
+			scope,
+			//rr.node->function.isBuiltin ?
+			//	scope :
+			//	rr.node->function.scope,
 			&rr.node->function,
 			node->expr.nodes[0]->var.name,
 			args,
@@ -216,4 +241,57 @@ RunResult run(Scope *scope, const Node *node) {
 
 RunResult in_run(Scope *scope, const InternedNode node) {
 	return run(scope, node.node);
+}
+
+RunResult runProgram(char *input, Scope *scope, bool doIntern) {
+	RunResult res = rr_null();
+
+	ProgramParseResult program = parseprogram(input);
+	free(input);
+
+	if (program.err) {
+		char *err;
+		asprintf(
+			&err,
+			"Program error: %s at line %d col %d\n",
+			program.err,
+			program.errloc.line,
+			program.errloc.col
+		);
+		res.err = err;
+
+		return res;
+	}
+
+	InternEnvironment *env = NULL;
+	if (doIntern) {
+		env = ie_make();
+	}
+
+	for (size_t i = 0; i < program.len; i++) {
+		if (program.nodes[i]->type != AST_EXPR) {
+			continue;
+		}
+
+		InternedNode interned;
+		if (doIntern) {
+			interned = intern(program.nodes[i], env);
+		} else {
+			interned = skipIntern(program.nodes[i]);
+		}
+
+		res = in_run(scope, interned);
+		node_free(interned.node);
+
+		if (res.err != NULL) {
+			char *err;
+			asprintf(&err, "Error while executing code: %s\n", res.err);
+			res.err = err;
+
+			return res;
+		}
+	}
+
+	ie_free(env, false);
+	return res;
 }

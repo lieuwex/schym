@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 #include "util.h"
 
 bool streq(const char *a, const char *b) {
@@ -31,4 +32,44 @@ char *emptystr(void) {
 	assert(res);
 	res[0] = '\0';
 	return res;
+}
+
+char *readfile(const char *fname) {
+	FILE *f = fopen(fname, "rb");
+	if (f == NULL) {
+		return NULL;
+	}
+	if (fseek(f, 0, SEEK_END) == -1) {
+		fclose(f);
+		return NULL;
+	}
+
+	long flen = ftell(f);
+	if (flen == -1) {
+		fclose(f);
+		return NULL;
+	}
+	rewind(f);
+
+	char *buf = malloc(flen + 1, sizeof(char));
+	if (buf == NULL) {
+		fclose(f);
+		return NULL;
+	}
+
+	fread(buf, 1, flen, f);
+	if (ferror(f)) {
+		fclose(f);
+		free(buf);
+		return NULL;
+	}
+
+	if (memchr(buf, '\0', flen) != NULL) {
+		fprintf(stderr, "Invalid null char in file '%s'\n", fname);
+		exit(1);
+	}
+
+	buf[flen] = '\0';
+	fclose(f);
+	return buf;
 }

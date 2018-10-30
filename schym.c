@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,46 +7,7 @@
 #include "src/interpreter/interpreter.h"
 #include "src/intern.h"
 #include "src/util.h"
-
-char *readfile(const char *fname) {
-	FILE *f = fopen(fname, "rb");
-	if (f == NULL) {
-		return NULL;
-	}
-	if (fseek(f, 0, SEEK_END) == -1) {
-		fclose(f);
-		return NULL;
-	}
-
-	long flen = ftell(f);
-	if (flen == -1) {
-		fclose(f);
-		return NULL;
-	}
-	rewind(f);
-
-	char *buf = malloc(flen + 1, sizeof(char));
-	if (buf == NULL) {
-		fclose(f);
-		return NULL;
-	}
-
-	fread(buf, 1, flen, f);
-	if (ferror(f)) {
-		fclose(f);
-		free(buf);
-		return NULL;
-	}
-
-	if (memchr(buf, '\0', flen) != NULL) {
-		fprintf(stderr, "Invalid null char in file '%s'\n", fname);
-		exit(1);
-	}
-
-	buf[flen] = '\0';
-	fclose(f);
-	return buf;
-}
+#include "src/linked_list.h"
 
 void printusage(const char *progname) {
 	fprintf(stderr, "USAGE:\t%s [-f] [ -e script | file ]\n\n", progname);
@@ -60,8 +20,14 @@ int main(int argc, char **argv) {
 	char *src = NULL;
 	bool format = false;
 
-#define FLAG(s, l) (streq(argv[i], s) || streq(argv[i], l))
+#define FLAG(s, l) (!skip && (streq(argv[i], s) || streq(argv[i], l)))
+	bool skip = false;
 	for (int i = 1; i < argc; i++) {
+		if (streq(argv[i], "--") && !skip) {
+			skip = true;
+			continue;
+		}
+
 		if (FLAG("-e", "--eval")) {
 			i++;
 			src = astrcpy(argv[i]);

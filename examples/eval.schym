@@ -1,3 +1,8 @@
-(set x "(print \"kaas\")")
+(set x '(print "kaas"))
 (print x)
 (eval x)
+
+(set ls '(print ))
+(append ls "ham")
+(print ls)
+(eval ls)

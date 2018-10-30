@@ -1,5 +1,6 @@
 #include "varmap.h"
 #include "../util.h"
+#include "../stringify.h"
 #include <assert.h>
 #include <string.h>
 
@@ -74,6 +75,14 @@ VarMap *varmap_copy(const VarMap *map) {
 		varmap_setItem(res, map->keys[i], map->values[i]);
 	}
 	return res;
+}
+
+void varmap_print(const VarMap *map) {
+	for (size_t i = 0; i < map->nkeys; i++) {
+		const char *key = map->keys[i];
+		const Node *node = map->values[i];
+		printf("%s = %s\n", key, stringify(node, 0));
+	}
 }
 
 void varmap_free(VarMap *map) {
