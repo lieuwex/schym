@@ -7,13 +7,13 @@
 #include "../../stringify.h"
 #include "math.h"
 
-RunResult builtin_arith(Scope *scope, const char *name, size_t nargs, const Node **args) {
 #define CHECKNUM(node) do { \
 	if (node == NULL || node->type != AST_NUM) { \
 		return rr_errf("all arguments should be a number"); \
 	} \
 } while(0)
 
+RunResult builtin_arith(Scope *scope, const char *name, size_t nargs, const Node **args) {
 	EXPECT(>=, 2);
 
 	Node *res = malloc(1, sizeof(Node));
@@ -51,8 +51,6 @@ RunResult builtin_arith(Scope *scope, const char *name, size_t nargs, const Node
 	}
 
 	return rr_node(res);
-
-#undef CHECKNUM
 }
 
 RunResult builtin_comp(Scope *scope, const char *name, size_t nargs, const Node **args) {
@@ -81,6 +79,24 @@ RunResult builtin_comp(Scope *scope, const char *name, size_t nargs, const Node 
 	return rr_node(res);
 }
 
+RunResult builtin_and_or(Scope *scope, const char *name, size_t nargs, const Node **args) {
+	const bool doAnd = streq(name, "and");
+
+	EXPECT(>=, 2);
+
+	RunResult rr;
+	for (size_t i = 0; i < nargs; i++) {
+		rr = run(scope, args[i]);
+		CHECKNUM(rr.node);
+		const double n = rr.node->num.val;
+
+		if ((doAnd && !n) || (!doAnd && n)) {
+			break;
+		}
+	}
+	return rr;
+}
+
 void init_builtins_math(BuiltinList *ls) {
 	addBuiltin(ls, "+", builtin_arith);
 	addBuiltin(ls, "-", builtin_arith);
@@ -95,4 +111,7 @@ void init_builtins_math(BuiltinList *ls) {
 	addBuiltin(ls, ">", builtin_comp);
 	addBuiltin(ls, "<=", builtin_comp);
 	addBuiltin(ls, ">=", builtin_comp);
+
+	addBuiltin(ls, "and", builtin_and_or);
+	addBuiltin(ls, "or", builtin_and_or);
 }
