@@ -1,0 +1,8 @@
+(load "prelude/lists")
+
+(assert (== 2 (cadr '(1 2 3))))
+(assert (== 2 (cadar (list (list 1 2) 3))))
+
+(assert (== 4 (list-ref '(1 2 3 4 5) 3)))
+
+(assert (== 4 (car (drop-while '(1 1 1 1 4 2 0) (fun (x) (== x 1))))))
