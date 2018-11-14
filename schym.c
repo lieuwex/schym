@@ -7,7 +7,6 @@
 #include "src/interpreter/interpreter.h"
 #include "src/intern.h"
 #include "src/util.h"
-#include "src/linked_list.h"
 
 void printusage(const char *progname) {
 	fprintf(stderr, "USAGE:\t%s [-f] [ -e script | file ]\n\n", progname);
