@@ -9,6 +9,19 @@
 #include "./builtins.h"
 #include "interpreter.h"
 
+#include "builtins/lists.h"
+#include "builtins/strings.h"
+#include "builtins/math.h"
+#include "builtins/stdio.h"
+
+static bool isQuoted(const Node *node, const char *str) {
+	return (
+		node->type == AST_QUOTED &&
+		node->quoted.node->type == AST_VAR &&
+		streq(node->quoted.node->var.name, str)
+	);
+}
+
 static char *nodesToStrings(Scope *scope, size_t nargs, const Node **args, char **output) {
 	for (size_t i = 0; i < nargs; i++) {
 		const Node *node = args[i];
@@ -23,118 +36,6 @@ static char *nodesToStrings(Scope *scope, size_t nargs, const Node **args, char 
 	}
 
 	return NULL;
-}
-
-static bool isQuoted(const Node *node, const char *str) {
-	return (
-		node->type == AST_QUOTED &&
-		node->quoted.node->type == AST_VAR &&
-		streq(node->quoted.node->var.name, str)
-	);
-}
-
-RunResult builtin_print(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-
-	RunResult res;
-	char **strings = malloc(nargs, sizeof(char*));
-	char *err = nodesToStrings(scope, nargs, args, strings);
-
-	// TODO: raw mode should do more
-	bool rawMode = nargs > 0 && isQuoted(args[0], "raw");
-
-	if (err != NULL) {
-		res = rr_errf(err);
-	} else {
-		size_t start = rawMode ? 1 : 0;
-		for (size_t i = start; i < nargs; i++) {
-			if (i != start) {
-				putchar(' ');
-			}
-
-			printf("%s", strings[i]);
-			free(strings[i]);
-		}
-
-		if (!rawMode) {
-			putchar('\n');
-		}
-		res = rr_null();
-	}
-
-	free(strings);
-	return res;
-}
-
-RunResult builtin_arith(Scope *scope, const char *name, size_t nargs, const Node **args) {
-#define CHECKNUM(node) do { \
-	if (node == NULL || node->type != AST_NUM) { \
-		return rr_errf("all arguments should be a number"); \
-	} \
-} while(0)
-
-	EXPECT(>=, 2);
-
-	Node *res = malloc(1, sizeof(Node));
-	res->type = AST_NUM;
-
-	RunResult rr = run(scope, args[0]);
-	CHECKNUM(rr.node);
-	res->num.val = rr.node->num.val;
-
-	for (size_t i = 1; i < nargs; i++) {
-		const RunResult rr = run(scope, args[i]);
-		CHECKNUM(rr.node);
-		const double n = rr.node->num.val;
-
-		switch (name[0]) {
-		case '+':
-			res->num.val += n;
-			break;
-		case '-':
-			res->num.val -= n;
-			break;
-		case '/':
-			res->num.val /= n;
-			break;
-		case '*':
-			res->num.val *= n;
-			break;
-		case '^':
-			res->num.val = pow(res->num.val, n);
-			break;
-		}
-	}
-
-	return rr_node(res);
-
-#undef CHECKNUM
-}
-
-RunResult builtin_comp(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	EXPECT(==, 2);
-
-	Node *res = malloc(1, sizeof(Node));
-	res->type = AST_NUM;
-
-	double n1 = getNumVal(scope, args[0]);
-	double n2 = getNumVal(scope, args[1]);
-
-	if (streq(name, "==")) {
-		res->num.val = n1 == n2;
-	} else if (streq(name, "!=")) {
-		res->num.val = n1 != n2;
-	} else if (streq(name, "<")) {
-		res->num.val = n1 < n2;
-	} else if (streq(name, ">")) {
-		res->num.val = n1 > n2;
-	} else if (streq(name, "<=")) {
-		res->num.val = n1 <= n2;
-	} else if (streq(name, ">=")) {
-		res->num.val = n1 >= n2;
-	}
-
-	return rr_node(res);
 }
 
 RunResult builtin_do(Scope *scope, const char *name, size_t nargs, const Node **args) {
@@ -296,34 +197,6 @@ RunResult builtin_let(Scope *scope, const char *name, size_t nargs, const Node *
 	return rr;
 }
 
-RunResult builtin_streq(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-
-	EXPECT(==, 2);
-
-	Node *res = malloc(1, sizeof(Node));
-	res->type = AST_NUM;
-
-	// TODO: using `run` copies the string, so making the intern equality check
-	// always ending up being `false`, should find something for that.
-	RunResult rr1 = run(scope, args[0]);
-	RunResult rr2 = run(scope, args[1]);
-
-	if (
-		(rr1.node->type != AST_STR) ||
-		(rr2.node->type != AST_STR)
-	) {
-		return rr_errf("both arguments should be a string");
-	}
-
-	res->num.val = (
-		rr1.node->str.str == rr2.node->str.str ||
-		streq(rr1.node->str.str, rr2.node->str.str)
-	);
-
-	return rr_node(res);
-}
-
 Node *mkQuotedExpr(size_t len) {
 	Node *res = malloc(1, sizeof(Node));
 	res->type = AST_QUOTED;
@@ -334,35 +207,6 @@ Node *mkQuotedExpr(size_t len) {
 	res->quoted.node->expr.len = len;
 	res->quoted.node->expr.nodes = malloc(len, sizeof(Node*));
 
-	return res;
-}
-
-RunResult builtin_concat(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-
-	RunResult res;
-	char **strings = malloc(nargs, sizeof(char*));
-	char *err = nodesToStrings(scope, nargs, args, strings);
-
-	if (err != NULL) {
-		res = rr_errf(err);
-	} else {
-		char *buf = emptystr();
-
-		for (size_t i = 0; i < nargs; i++) {
-			strappend(&buf, strings[i]);
-			free(strings[i]);
-		}
-
-		Node *node = malloc(1, sizeof(Node));
-		node->type = AST_STR;
-		node->str.size = strlen(buf);
-		node->str.str = buf;
-
-		res = rr_node(node);
-	}
-
-	free(strings);
 	return res;
 }
 
@@ -484,174 +328,6 @@ RunResult builtin_cond(Scope *scope, const char *name, size_t nargs, const Node 
 	return rr_null();
 }
 
-RunResult builtin_to_number(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-
-	EXPECT(==, 1);
-	RunResult rr = run(scope, args[0]);
-	if (rr.err != NULL) {
-		return rr;
-	}
-
-	switch (rr.node->type) {
-	case AST_NUM:
-		return rr_node(node_copy(rr.node));
-
-	case AST_STR: {
-		ParseResult pr = parse(rr.node->str.str);
-		assert(pr.err == NULL && pr.node != NULL && pr.node->type == AST_NUM);
-		return rr_node(pr.node);
-	}
-
-	default:
-		return rr_errf("expected string or number, got %s", typetostr(rr.node));
-	}
-}
-
-RunResult builtin_to_string(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)scope;
-	(void)name;
-
-	EXPECT(==, 1);
-	RunResult rr = run(scope, args[0]);
-	if (rr.err != NULL) {
-		return rr;
-	}
-
-	char *str = toString(rr.node);
-	node_free(rr.node);
-
-	Node *node = malloc(1, sizeof(Node));
-	node->type = AST_STR;
-	node->str.str = str;
-	node->str.size = strlen(str);
-	return rr_node(node);
-}
-
-RunResult builtin_input(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)scope;
-	(void)name;
-	(void)args;
-
-	EXPECT(==, 0);
-
-	char *line = NULL;
-	size_t len = 0;
-	getline(&line, &len, stdin);
-
-	Node *res = malloc(1, sizeof(Node));
-	res->type = AST_STR;
-	res->str.str = line;
-	res->str.size = len;
-	return rr_node(res);
-}
-
-static Node *makeList(size_t size) {
-	Node *expr = malloc(1, sizeof(Node));
-	expr->type = AST_EXPR;
-
-	expr->expr.len = size;
-	expr->expr.nodes = calloc(size, sizeof(Node*));
-
-	Node *res = malloc(1, sizeof(Node));
-	res->type = AST_QUOTED;
-	res->quoted.node = expr;
-
-	return res;
-}
-
-RunResult builtin_list(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-
-	Node *res = makeList(nargs);
-
-	for (size_t i = 0; i < nargs; i++) {
-		const Node *node = args[i];
-		RunResult rr = run(scope, node);
-
-		if (rr.err != NULL) {
-			return rr;
-		}
-
-		res->quoted.node->expr.nodes[i] = rr.node;
-	}
-
-	return rr_node(res);
-}
-
-RunResult builtin_car(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-
-	EXPECT(==, 1);
-	RunResult rr = run(scope, args[0]);
-	if (rr.err != NULL) {
-		return rr;
-	}
-
-	// REVIEW
-	Node *node = rr.node->quoted.node->expr.nodes[0];
-	return rr_node(node);
-}
-
-RunResult builtin_cdr(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-	EXPECT(==, 1);
-	RunResult rr = run(scope, args[0]);
-	if (rr.err != NULL) {
-		return rr;
-	}
-
-	// TODO: typecheck
-	// REVIEW
-	rr.node->quoted.node->expr.len--;
-	rr.node->quoted.node->expr.nodes = rr.node->quoted.node->expr.nodes+1;
-	return rr_node(rr.node);
-}
-
-RunResult builtin_append(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-	EXPECT(==, 2);
-
-	RunResult list = run(scope, args[0]);
-	if (list.err != NULL) {
-		return list;
-	}
-
-	RunResult val = run(scope, args[1]);
-	if (val.err != NULL) {
-		return val;
-	}
-
-	if (list.node->type != AST_QUOTED) {
-		return rr_errf("expected list");
-	}
-
-	list.node->quoted.node->expr.len++;
-	list.node->quoted.node->expr.nodes = realloc(list.node->quoted.node->expr.nodes, list.node->quoted.node->expr.len, sizeof(Node*));
-	list.node->quoted.node->expr.nodes[list.node->quoted.node->expr.len-1] = node_copy(val.node);
-
-	return rr_null();
-}
-
-RunResult builtin_load(Scope *scope, const char *name, size_t nargs, const Node **args) {
-	(void)name;
-	EXPECT(==, 1);
-
-	RunResult res;
-	char **files = malloc(nargs, sizeof(char*));
-	nodesToStrings(scope, nargs, args, files);
-
-	char *input = readfile(files[0]);
-	if (input == NULL) {
-		res = rr_errf("error while reading file");
-	} else {
-		res = runProgram(input, scope, true);
-	}
-
-	free(files);
-	return res;
-}
-
 static Builtin makeBuiltin(const char *name, RunResult (*fn)(Scope*, const char*, size_t, const Node**)) {
 	Builtin res;
 
@@ -681,40 +357,21 @@ BuiltinList *builtins_make(bool addPrelude) {
 		return res;
 	}
 
-	addBuiltin(res, "print", builtin_print);
-	addBuiltin(res, "+", builtin_arith);
-	addBuiltin(res, "-", builtin_arith);
-	addBuiltin(res, "/", builtin_arith);
-	addBuiltin(res, "*", builtin_arith);
-	addBuiltin(res, "^", builtin_arith);
-	addBuiltin(res, "==", builtin_comp);
-	addBuiltin(res, "!=", builtin_comp);
-	addBuiltin(res, "<", builtin_comp);
-	addBuiltin(res, ">", builtin_comp);
-	addBuiltin(res, "<=", builtin_comp);
-	addBuiltin(res, ">=", builtin_comp);
 	addBuiltin(res, "do", builtin_do);
 	addBuiltin(res, "if", builtin_if);
 	addBuiltin(res, "set", builtin_set);
 	addBuiltin(res, "let", builtin_let);
-	addBuiltin(res, "streq", builtin_streq);
 	addBuiltin(res, "fun", builtin_fun);
-	addBuiltin(res, "concat", builtin_concat);
 	addBuiltin(res, "times", builtin_times);
 	addBuiltin(res, "eval", builtin_eval);
 	addBuiltin(res, "assert", builtin_assert);
 	addBuiltin(res, "cond", builtin_cond);
-	addBuiltin(res, "to-number", builtin_to_number);
-	addBuiltin(res, "to-string", builtin_to_string);
-	addBuiltin(res, "input", builtin_input);
 
-	// list stuff
-	addBuiltin(res, "list", builtin_list);
-	addBuiltin(res, "car", builtin_car);
-	addBuiltin(res, "cdr", builtin_cdr);
-	addBuiltin(res, "append", builtin_append);
 
-	addBuiltin(res, "load", builtin_load);
+	init_builtins_lists(res);
+	init_builtins_strings(res);
+	init_builtins_stdio(res);
+	init_builtins_math(res);
 
 	return res;
 }
