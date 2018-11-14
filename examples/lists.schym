@@ -1,0 +1,7 @@
+(load "prelude/lists")
+
+(print (cadr '(1 2 3))) ; 2
+(print (cadar (list (list 1 2) 3))) ; 2
+(print (list-ref '(1 2 3 4 5) 3)) ; 4
+
+(print (drop-while '(1 1 1 1 4 2 0) (fun (x) (== x 1))))

@@ -1,0 +1,8 @@
+;; prints the given str and retrieves one line of user input on stdin
+(define ask (str)
+	(print 'raw str)
+	(input))
+
+;; prints the given str and retrieves a number from stdin
+(define ask-number (str)
+	(to-number (ask str)))

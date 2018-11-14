@@ -1,0 +1,42 @@
+(load "prelude/logic")
+
+[set caar (x)     (car (car x))]
+[set cadr (x)     (car (cdr x))]
+[set cdar (x)     (cdr (car x))]
+[set cddr (x)     (cdr (cdr x))]
+[set caaar (x)    (car (car (car x)))]
+[set caadr (x)    (car (car (cdr x)))]
+[set cadar (x)    (car (cdr (car x)))]
+[set caddr (x)    (car (cdr (cdr x)))]
+[set cdaar (x)    (cdr (car (car x)))]
+[set cdadr (x)    (cdr (car (cdr x)))]
+[set cddar (x)    (cdr (cdr (car x)))]
+[set cdddr (x)    (cdr (cdr (cdr x)))]
+[set caaaar (x)   (car (car (car (car x))))]
+[set caaadr (x)   (car (car (car (cdr x))))]
+[set caadar (x)   (car (car (cdr (car x))))]
+[set caaddr (x)   (car (car (cdr (cdr x))))]
+[set cadaar (x)   (car (cdr (car (car x))))]
+[set cadadr (x)   (car (cdr (car (cdr x))))]
+[set caddar (x)   (car (cdr (cdr (car x))))]
+[set cadddr (x)   (car (cdr (cdr (cdr x))))]
+[set cdaaar (x)   (cdr (car (car (car x))))]
+[set cdaadr (x)   (cdr (car (car (cdr x))))]
+[set cdadar (x)   (cdr (car (cdr (car x))))]
+[set cdaddr (x)   (cdr (car (cdr (cdr x))))]
+[set cddaar (x)   (cdr (cdr (car (car x))))]
+[set cddadr (x)   (cdr (cdr (car (cdr x))))]
+[set cdddar (x)   (cdr (cdr (cdr (car x))))]
+[set cddddr (x)   (cdr (cdr (cdr (cdr x))))]
+
+;; gets the n'th item from the given list
+(set list-ref (xs n)
+	(if (== n 0)
+		(car xs)
+		(list-ref (cdr xs) (- n 1))))
+
+;; drops the given list from left to right as long as the given fn returns true
+(set drop-while (xs fn)
+	(if (fn (car xs))
+		(drop-while (cdr xs) fn)
+		xs))
