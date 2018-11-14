@@ -1,3 +1,4 @@
+#include <string.h>
 #include "../../ast.h"
 #include "../../util.h"
 #include "../interpreter.h"

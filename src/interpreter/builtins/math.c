@@ -1,5 +1,6 @@
 #include <strings.h>
 #include <assert.h>
+#include <math.h>
 #include "../../ast.h"
 #include "../../util.h"
 #include "../interpreter.h"

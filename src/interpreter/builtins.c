@@ -22,22 +22,6 @@ static bool isQuoted(const Node *node, const char *str) {
 	);
 }
 
-static char *nodesToStrings(Scope *scope, size_t nargs, const Node **args, char **output) {
-	for (size_t i = 0; i < nargs; i++) {
-		const Node *node = args[i];
-		assert(node);
-
-		RunResult rr = run(scope, node);
-		if (rr.err != NULL) {
-			return rr.err;
-		}
-
-		output[i] = toString(rr.node);
-	}
-
-	return NULL;
-}
-
 RunResult builtin_do(Scope *scope, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 
@@ -274,7 +258,7 @@ RunResult builtin_assert(Scope *scope, const char *name, size_t nargs, const Nod
 
 	if (!rr.node->num.val) {
 		char *str = stringify(args[0], 0);
-		fprintf(stderr, "assertion failed: %s (result was %g)\n", str, rr.node->num.val);
+		fprintf(stderr, "assertion failed: %s\n", str);
 		free(str);
 		abort();
 	}

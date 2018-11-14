@@ -183,7 +183,7 @@ RunResult run(Scope *scope, const Node *node) {
 		}
 
 		if (rr.node == NULL) {
-			return rr_errf("cannot call nil value");
+			return rr_errf("cannot call nil value '%s'", stringify(node->expr.nodes[0], 0));
 		} else if (rr.node->type != AST_FUN) {
 			return rr_errf(
 				"Cannot call non-function (type %s)",
