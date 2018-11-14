@@ -1,4 +1,4 @@
 ;; throws the given str
-(define throw (str)
+(set throw (str)
 	(print str)
 	(assert 0))

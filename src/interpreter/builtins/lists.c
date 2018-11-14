@@ -129,13 +129,15 @@ RunResult builtin_cons(Scope *scope, const char *name, size_t nargs, const Node 
 	);
 	memmove(listcpy->quoted.node->expr.nodes + 1, listcpy->quoted.node->expr.nodes, listcpy->quoted.node->expr.len-1);
 	listcpy->quoted.node->expr.nodes[0] = itemcpy;
+
+	return rr_node(listcpy);
 }
 
 RunResult builtin_null(Scope *scope, const char *name, size_t nargs, const Node **args) {
 	(void)name;
 	EXPECT(==, 1);
 
-	RunResult list = run(scope, args[1]);
+	RunResult list = run(scope, args[0]);
 	if (list.err != NULL) {
 		return list;
 	}

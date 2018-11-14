@@ -1,10 +1,10 @@
 (set z 5)
 
-(set a (x)
-	 (fun (y) (+ x y z)))
+(set a ()
+	 (fun (y) (+ y z)))
 
-(set res ((a 1) 2))
-(assert (== res 8))
+(set res ((a) 2))
+(assert (== res 7))
 
 (set a ()
 	(fun () z))
