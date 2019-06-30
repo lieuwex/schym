@@ -1,0 +1,6 @@
+(set add-curried (x)
+	(fun (y) (+ x y)))
+
+(set add-five (add-curried 5))
+
+(print (add-five 10)) ; 15

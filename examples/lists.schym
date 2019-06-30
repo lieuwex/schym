@@ -5,3 +5,5 @@
 (print (list-ref '(1 2 3 4 5) 3)) ; 4
 
 (print (drop-while '(1 1 1 1 4 2 0) (fun (x) (== x 1))))
+
+(print (filter '(1 2 3 4 5) (fun (x) (== (% x 2) 0))))

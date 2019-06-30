@@ -75,7 +75,10 @@ double getNumVal(Scope *scope, const Node *node) {
 	case AST_VAR:
 	case AST_EXPR: {
 		RunResult rr = run(scope, node);
-		assert(rr.err == NULL);
+		if (rr.err != NULL) {
+			fprintf(stderr, "%s\n", rr.err);
+			assert(false);
+		}
 		double res = getNumVal(scope, rr.node);
 		if (rr.node != NULL) {
 			node_free(rr.node);

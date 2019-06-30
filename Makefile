@@ -1,5 +1,5 @@
 CC ?= g++
-CFLAGS = -Wall -Wextra -std=c11 -g -fwrapv -lm
+CFLAGS = -Wall -Wextra -std=c11 -O3 -fwrapv -lm
 
 SRC_FILES = $(shell find src/ -name '*.h' -o -name '*.c') schym.c
 BIN ?= main

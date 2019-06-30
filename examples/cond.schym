@@ -1,0 +1,17 @@
+(load "prelude/stdio")
+
+(print "0 will print a")
+(print "1 will print b")
+(print "2 will print c")
+(print "everything will print else")
+(print)
+(set val (ask-number "enter a number: "))
+
+(set val
+	(cond
+		[(== val 0) "a"]
+		[(== val 1) "b"]
+		[(== val 2) "c"]
+		['else      "else"]))
+
+(print val)

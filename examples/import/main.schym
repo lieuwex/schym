@@ -1,0 +1,4 @@
+; TODO: path
+(print (load "examples/import/imported.schym"))
+
+(print (cadr '(5 6 7)))

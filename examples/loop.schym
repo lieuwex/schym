@@ -1,0 +1,8 @@
+(load "prelude/logic")
+
+(print "firstly")
+(loop 0 5 print)
+
+(print)(print "and now")
+(loop 0 5
+	(fun (x) (print (^ x x))))

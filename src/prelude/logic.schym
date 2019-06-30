@@ -1,1 +1,15 @@
 (set not (x) (if x 0 1))
+
+(set loop (from to body)
+	(if (== from to)
+		'()
+		(do
+			(body from)
+			(loop (+ 1 from) to body))))
+
+(set while (cond body)
+	(if (cond)
+		(do
+			(body)
+			(while cond body))
+		'()))

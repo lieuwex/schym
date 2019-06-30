@@ -40,3 +40,13 @@
 	(if (fn (car xs))
 		(drop-while (cdr xs) fn)
 		xs))
+
+;; filter removes the items not being matched by the given fn
+(set filter (xs fn)
+	(if (null? xs)
+		xs
+		(let ((filtered (filter (cdr xs) fn))
+					(first (car xs)))
+			(if (not (fn (car xs)))
+				filtered
+				(cons first filtered)))))

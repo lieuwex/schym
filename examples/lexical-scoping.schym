@@ -1,0 +1,6 @@
+(set test
+	(let ((scope 'lexical))
+		(fun () scope)))
+
+(let ((scope 'dynamic))
+	(print (test)))

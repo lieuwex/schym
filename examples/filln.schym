@@ -1,0 +1,9 @@
+(set fn (xs val n)
+	(if (== n 0)
+		xs
+		(fn (cons val xs) val (- n 1))))
+
+(set fill-n (val n)
+	(fn '() val n))
+
+(print (fill-n 10 100))

@@ -1,0 +1,18 @@
+(set get-nth (n xs)
+	(if (== n 0)
+		(car xs)
+		(get-nth (- n 1) (cdr xs))))
+
+(set make-record (x y) (list (x y 0)))
+(set get-x (record) (get-nth 0 record))
+(set get-y (record) (get-nth 1 record))
+(set is-flagged (record) (get-nth 2 record))
+
+(set fn (board n)
+	(if (< n 0)
+		board
+		(do
+			(append board (make-record))
+			(fn board (- n 1)))))
+
+(set make-board (size) (fill (* size size) ))

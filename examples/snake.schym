@@ -1,0 +1,12 @@
+(set getInput () (let (
+					   (c (input)))
+				   (cond
+					 ((== c "w") "up")
+					 ((== c "a") "left")
+					 ((== c "s") "down")
+					 ((== c "d") "right"))))
+
+(set printBoard (width height)
+	 )
+
+()
